@@ -1,5 +1,3 @@
-from selenium.webdriver.common.by import By
-import DBHandler as db
 import Provider
 
 
@@ -8,9 +6,9 @@ class Fleetguard(Provider):
     _catalog_url = "https://shop.donaldson.com/store/ru-ru/search?Ntt="
     _max_page = 1
 
-    def __init__(self, producer_id):
+    def __init__(self, producer_id, dbHandler):
         self._producer_id = producer_id
-        self._producer_name = db.getProducerById(self._producer_id)
+        self._producer_name = dbHandler.getProducerById(self._producer_id)
 
     def search(self, driver, page_number, search_request):
         # if page_number > 0:
@@ -26,7 +24,7 @@ class Fleetguard(Provider):
     def endCondision(self, page):
         # if page < self._max_page:
             return True
-        return False
+        # return False
 
 
     def parseSearchResult(self, driver):
@@ -36,7 +34,8 @@ class Fleetguard(Provider):
         #     if index % 2 == 0:
         #         spans = elem.find_elements(By.TAG_NAME, "span")
         #         articles.append([spans[0].get_attribute("innerHTML"), elem.get_attribute("href")])
-        return articles
+        # return articles
+        return ""
 
     def parseCrossReference(self, driver, article_id):
         # driver.execute_script("document.getElementById(\"showAllCrossReferenceListButton\").click();" +
@@ -65,3 +64,4 @@ class Fleetguard(Provider):
         #         analog_article_name = elem.text
         #         analog_article_id = db.insertArticle(analog_article_name, analog_producer_id)
         #         analogs.append(analog_article_id)
+        return ""
