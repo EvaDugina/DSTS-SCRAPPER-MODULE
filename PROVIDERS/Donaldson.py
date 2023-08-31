@@ -24,8 +24,9 @@ def wait_until(return_value, period=1):
 
 class Donaldson(Provider.Provider):
     _main_url = "https://shop.donaldson.com"
-    _catalog_url = "https://shop.donaldson.com/store/ru-ru/search?Ntt="
+    _catalogue_url = "https://shop.donaldson.com/store/ru-ru/search?Ntt="
     _article_url = "https://shop.donaldson.com/store/ru-ru/product/"
+    _catalogue_name = "DONALDSON"
     max_page = 1
     _dbHandler = None
 
@@ -50,7 +51,7 @@ class Donaldson(Provider.Provider):
     def search(self, driver, page_number, search_request):
         if page_number > 0:
             # Переходим на др. страницу
-            driver.get(self._catalog_url + search_request + f'&No={20 * page_number}')
+            driver.get(self._catalogue_url + search_request + f'&No={20 * page_number}')
         elif page_number <= self.max_page:
             self.max_page = self.getPageCount(driver, search_request)
         else:
@@ -143,20 +144,19 @@ class Donaldson(Provider.Provider):
 
 
     def parseCrossReference(self, main_article_name, producer_name, cross_ref):
-        producer_id = self._dbHandler.getProducerByName(producer_name)[0]
-        print("PRODUCER_ID: " + str(producer_id))
-        main_article_id = self._dbHandler.insertArticle(main_article_name, producer_id)
+        main_producer_id = self._dbHandler.insertProducer(producer_name, self._catalogue_name)
+        print("----> PRODUCER_ID: " + str(main_producer_id))
+        main_article_id = self._dbHandler.insertArticle(main_article_name, main_producer_id)
         for elem in cross_ref:
             producer_name = elem['manufactureName']
-            producer_id = self._dbHandler.insertProducer(producer_name)
-            print("PRODUCER_ID: " + str(producer_id))
+            print("\t--> PRODUCER_NAME: " + str(producer_name))
+            producer_id = self._dbHandler.insertProducer(producer_name, self._catalogue_name)
             analog_article_names = elem['manufacturePartNumber']
             analog_article_ids = []
             for article_name in analog_article_names:
-                analog_article_ids.append(self._dbHandler.insertArticle(article_name, producer_id))
-            self._dbHandler.insertArticleAnalogs(main_article_id, analog_article_names)
-
-
+                analog_article_id = self._dbHandler.insertArticle(article_name, producer_id)
+                analog_article_ids.append(analog_article_id)
+            self._dbHandler.insertArticleAnalogs(main_article_id, analog_article_ids, self._catalogue_name)
 
 
     def getAnalogs(self, article_url, article_id):
@@ -174,6 +174,17 @@ class Donaldson(Provider.Provider):
 
             page.context.close()
             browser.close()
+
+
+    def setInfo(self, article_name, producer_name, info_json):
+        producer_id = self._dbHandler.getProducerIdByNameAndCatalogueName(producer_name, self._catalogue_name)
+        article_id = self._dbHandler.getArticleByName(article_name, producer_id)[0]
+
+        main_info = info_json['productMainInfo']
+        secondary_info = info_json['productSecondaryInfo']
+        output_json = {**main_info, **secondary_info}
+
+        self._dbHandler.insertArticleInfo(article_id, self._catalogue_name, output_json)
 
 
     def saveJSON(self, article_url, article_name, search_request):

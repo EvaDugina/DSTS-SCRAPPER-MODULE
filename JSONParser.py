@@ -25,15 +25,17 @@ def parseJSONS(start_line, end_line):
         producer_name = line_json['producer_name']
 
         cross_ref = line_json['info']['crossReference']
-        main_info = line_json['info']['productMainInfo']
-        secondary_info = line_json['info']['productSecondaryInfo']
 
         start_time_parsing_jsons = datetime.datetime.now()
         provider = wHandl.getProviderAndProducerId(catalogue_name, _dbHandler)
         provider.parseCrossReference(article_name, producer_name, cross_ref)
+        provider.setInfo(article_name, producer_name, line_json['info'])
         end_time_parsing_jsons = datetime.datetime.now()
         print("parseCrossReference() -> completed! ВРЕМЯ: " +
               str(int((end_time_parsing_jsons - start_time_parsing_jsons).total_seconds())) + " сек.")
+
+
+
 
 
     print()

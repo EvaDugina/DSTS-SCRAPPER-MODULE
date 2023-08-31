@@ -20,14 +20,14 @@ _THREADS_LIMIT = 4
 def getProviderAndProducerId(catalogue_name, dbHandler):
     if catalogue_name == "DONALDSON":
         print("ПО САЙТУ-ПРОИЗВОДИТЕЛЮ: DONALDSON")
-        producer_id = dbHandler.insertProducer(catalogue_name)
+        producer_id = dbHandler.insertProducer(catalogue_name, catalogue_name)
         provider = Donaldson.Donaldson(producer_id, dbHandler)
     # elif site_name == "FLEETGUARD":
     #     producer_id = dbHandler.insertProducer(site_name)
     #     provider = fl.Fleetguard(producer_id)
     elif catalogue_name == "FIL-FILTER":
         print("ПО САЙТУ-ПРОИЗВОДИТЕЛЮ: FIL-FILTER")
-        producer_id = dbHandler.insertProducer(catalogue_name)
+        producer_id = dbHandler.insertProducer(catalogue_name, catalogue_name)
         provider = FilFilter.FilFilter(producer_id, dbHandler)
 
     else:
