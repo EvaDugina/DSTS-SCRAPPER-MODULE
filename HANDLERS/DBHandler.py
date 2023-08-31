@@ -1,4 +1,5 @@
 import psycopg2
+
 from UTILS import parse
 
 
@@ -86,7 +87,7 @@ class DBWorker:
 
 
 
-    def insertArticle(self, article_name, producer_id):
+    def insertArticle(self, article_name, producer_id) -> int:
         article_name.upper().strip()
 
         if not self.isArticleExist(article_name, producer_id):

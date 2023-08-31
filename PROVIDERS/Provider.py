@@ -1,3 +1,7 @@
+from UTILS import strings
+
+
+
 class Provider:
 
     def getMainUrl(self):
@@ -21,10 +25,10 @@ class Provider:
     def loadArticlePage(self, driver, article, search_type):
         pass
 
-    def parseCrossReference(self, driver, article_id, timeout):
+    def parseCrossReference(self, main_article_name, producer_name, cross_ref):
         pass
 
-    def saveJSON(self, article_url, article_name):
+    def saveJSON(self, article_url, article_name, search_request):
         pass
 
     def getAnalogs(self, article_url, article_id):

@@ -1,7 +1,9 @@
 from tkinter import *
 from tkinter import messagebox
 from tkinter.ttk import Combobox
+
 from HANDLERS import WEBHandler as web
+
 
 _width = 800
 _height = 600
@@ -60,7 +62,7 @@ text_name_producer = Label(
 text_name_producer.grid(row=2, column=1)
 
 combo_producer_name = Combobox(frame, width=25)
-combo_producer_name['values'] = ("ВСЕ ПРОИЗВОДИТЕЛИ", "DONALDSON", "FIL-FILTER")
+combo_producer_name['values'] = ("DONALDSON")
 combo_producer_name.current(0)
 combo_producer_name.grid(row=2, column=2)
 

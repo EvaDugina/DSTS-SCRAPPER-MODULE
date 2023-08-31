@@ -1,8 +1,9 @@
-from selenium.common import WebDriverException, JavascriptException
-from selenium.webdriver.common.by import By
-import Provider as _provider
 import time
 
+from selenium.common import WebDriverException, JavascriptException
+from selenium.webdriver.common.by import By
+
+from PROVIDERS import Provider
 from UTILS import strings
 
 
@@ -13,7 +14,7 @@ def wait_until(return_value, period=0.5):
     return False
 
 
-class FilFilter(_provider.Provider):
+class FilFilter(Provider.Provider):
 
     _main_url = "https://catalog.filfilter.com.tr/ru"
     _catalog_url = "https://catalog.filfilter.com.tr/ru/search/"

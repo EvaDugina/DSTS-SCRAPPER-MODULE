@@ -3,9 +3,10 @@ import datetime
 import threading
 
 from selenium import webdriver
+from selenium.webdriver.chrome.service import Service as ChromeService
+from webdriver_manager.chrome import ChromeDriverManager
 
-from PROVIDERS import Donaldson as dl, FilFilter as ff
-# import Fleetguard as fl
+from PROVIDERS import Donaldson as Donaldson, FilFilter as FilFilter
 from HANDLERS import FILEHandler as fHandler, DBHandler as db
 from UTILS import strings
 
@@ -14,6 +15,26 @@ _provider = None
 _search_request = ""
 _catalogue_name = ""
 _THREADS_LIMIT = 4
+
+
+def getProviderAndProducerId(catalogue_name, dbHandler):
+    if catalogue_name == "DONALDSON":
+        print("ПО САЙТУ-ПРОИЗВОДИТЕЛЮ: DONALDSON")
+        producer_id = dbHandler.insertProducer(catalogue_name)
+        provider = Donaldson.Donaldson(producer_id, dbHandler)
+    # elif site_name == "FLEETGUARD":
+    #     producer_id = dbHandler.insertProducer(site_name)
+    #     provider = fl.Fleetguard(producer_id)
+    elif catalogue_name == "FIL-FILTER":
+        print("ПО САЙТУ-ПРОИЗВОДИТЕЛЮ: FIL-FILTER")
+        producer_id = dbHandler.insertProducer(catalogue_name)
+        provider = FilFilter.FilFilter(producer_id, dbHandler)
+
+    else:
+        print("#### ОШИБКА! Выбран некорректный сайт производителя: " + str(catalogue_name))
+        return strings.UNDEFIND_PRODUCER + ": " + str(catalogue_name)
+
+    return provider
 
 
 def setGlobals(provider, search_request):
@@ -29,15 +50,28 @@ def setGlobalCatalogueName(catalogue_name):
 
 def getBrowser():
     driver = None
+
     try:
+        # options = webdriver.EdgeOptions()
+        # options.use_chromium = True
+        # options.add_argument("--lang=ru")
+        # options.add_experimental_option('excludeSwitches', ['enable-logging'])
+        # prefs = {
+        #     "translate_whitelists": 'ru',
+        #     "translate": {"enabled": "true"}
+        # }
+        # options.add_experimental_option("prefs", prefs)
+        # driver = webdriver.Edge(options=options)
         driver = webdriver.Edge()
-    except:
+    except Exception as ex:
+        print(ex)
         try:
-            options = webdriver.ChromeOptions()
-            options.add_argument("user-agent=Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:84.0) Gecko/20100101 Firefox/84.0")
-            options.add_argument("--disable-blink-features=AutomationControlled")
+            # options = webdriver.ChromeOptions()
+            # options.add_argument("user-agent=Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:84.0) Gecko/20100101 Firefox/84.0")
+            # options.add_argument("--disable-blink-features=AutomationControlled")
             # https://www.youtube.com/watch?v=EMMY9t6_R4A
-            driver = webdriver.Chrome(options=options)
+            # options.add_argument("--lang=ru")
+            driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()))
         except:
             try:
                 driver = webdriver.Firefox()
@@ -47,6 +81,13 @@ def getBrowser():
                 except:
                     print("БРАУЗЕР НЕ НАЙДЕН!")
     return driver
+
+
+def getCountThreads(count_elements):
+    if count_elements // _THREADS_LIMIT > 0:
+        return _THREADS_LIMIT
+    else:
+        return count_elements
 
 
 def getLINKSbyPage(pages):
@@ -72,7 +113,7 @@ def getLINKSbyPage(pages):
             print(f"T{page}: parseSearchResult() -> completed")
 
             for article in articles:
-                fHandler.appendLINKtoFile("DONALDSON", article[0] + " " + article[1])
+                fHandler.appendLINKtoFile("DONALDSON", article[0] + " " + article[1], _search_request)
             print(f"T{page}: appendLINKtoFile() -> completed")
 
             print(f'PAGE №{page} -> completed')
@@ -131,41 +172,20 @@ class WebWorker:
         # ПРОВЕРКА ИНТЕРНЕТ СОЕДИНЕНИЯ
         try:
             requests.head(self._provider.getMainUrl(), timeout=1)
-        except requests.ConnectionError:
+        except:
             print("#### ОШИБКА! Отсутствует интернет-соединение")
             return strings.INTERNET_ERROR
-
-
-        # ДЛЯ КРОСС-РЕФЕРЕНСА ПО ПРЯМОЙ ССЫЛКЕ
-        # if url is not None:
-        #     print("--> Кросс-Референс по прямой ссылке:")
-        #     article = self._provider.getArticleFromURL(url)
-        #     if not article:
-        #         return strings.INCORRECT_LINK
-        #
-        #     producer_id = self._provider.getProducerId(article)
-        #     print("PRODUCER_ID: " + str(producer_id))
-        #
-        #     print(f"-- {url} : {article[0]}")
-        #     article_id = dbHandler.insertArticle(article[0], producer_id)
-        #     driver = self._provider.loadArticlePage(driver, article, True)
-        #     if not driver:
-        #         return "НЕ УДАЛОСЬ ЗАГРУЗИТЬ СТРАНИЦУ"
-        #
-        #     flag = doWhileNoSuccess(0, "parseCrossRef", self._provider.parseCrossReference, driver, article_id)
-        #
-        #     if flag == "SUCCESS":
-        #         return flag
-        #     else:
-        #         return "СТРАНИЦА НЕ БЫЛА ОБРАБОТАНА!\n" + str(flag)
-        # print()
 
         # ПОЛУЧАЕМ КОЛИЧЕСТВО СТРАНИЦ
         driver = getBrowser()
         if driver is None:
             print("#### ОШИБКА! Не найден браузер")
             return strings.UNDEFIND_BROWSER
-        max_page = int(self._provider.getPageCount(driver, self._search_request))
+        max_page = self._provider.getPageCount(driver, self._search_request)
+        if max_page == strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE:
+            max_page = 1
+        else:
+            max_page = int(max_page)
         driver.close()
         driver.quit()
 
@@ -205,13 +225,10 @@ class WebWorker:
                 print("#### ОШИБКА! Не найден браузер")
                 return strings.UNDEFIND_BROWSER
 
-            articles = fHandler.getLINKSfromFileByLines("DONALDSON", start_line, end_line)
+            articles = fHandler.getLINKSfromFileByLines("DONALDSON", self._search_request, start_line, end_line)
             print()
 
             for article in articles:
-                # producer_id = self._provider.getProducerId(article)
-                # print("PRODUCER_ID: " + str(producer_id))
-                # article[0] = dbHandler.insertArticle(article[0], producer_id)
 
                 print(f'{article[0]}')
 
@@ -222,7 +239,7 @@ class WebWorker:
                 if driver == strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE:
                     return strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE
                 print("loadArticlePage() -> completed")
-                provider.saveJSON(article[1], article[0])
+                provider.saveJSON(article[1], article[0], self._search_request)
 
                 print()
 
@@ -238,65 +255,70 @@ class WebWorker:
 
         return "JSONS вытащены успешно!"
 
-
     def generateJSONSbyThreads(self):
         setGlobalCatalogueName(self._catalogue_name)
 
-        count_lines = fHandler.getCountLINKSLines(f"{self._catalogue_name}.txt")
+        count_lines = fHandler.getCountLINKSLines(self._catalogue_name, f"{self._search_request}.txt")
+
+        # Определяем количество потоков
+        count_threads = getCountThreads(count_lines)
+
+        # Распределяем ссылки (части файла) по потокам
+        parts = []
+        count_lines_in_part = count_lines // count_threads
+        if count_lines // count_threads != 0:
+            for i in range(0, count_threads):
+                start_index = i * count_lines_in_part
+                end_index = (i+1) * count_lines_in_part
+                parts.append([start_index, end_index])
+
+        # Добавляем поток с нераспределёнными ссылками
+        if count_lines % count_threads != 0:
+            parts.append([])
+            parts[len(parts)-1].append([count_lines - (count_lines % count_threads), count_lines])
+
+        # Запускаем потоки
 
         tasks = []
-        count_lines_in_part = count_lines // _THREADS_LIMIT
-        for i in range(0, _THREADS_LIMIT):
-            start_index = i * count_lines_in_part
-            end_index = (i+1) * count_lines_in_part
-            tasks.append(threading.Thread(target=self.parseLINKS, args=(start_index, end_index)))
-        for index, task in enumerate(tasks):
-            task.start()
+        for i in range(0, count_threads):
+            tasks.append(threading.Thread(target=self.parseLINKS, args=(parts[i][0], parts[i][1])))
+        for i in range(0, count_threads):
+            tasks[i].start()
+            print(f"T{i} START!")
+            tasks[i].join()
+        if count_lines % count_threads != 0:
+            index = len(tasks)-1
+            tasks.append(threading.Thread(target=self.parseLINKS, args=(parts[index][0], parts[index][1])))
+            tasks[index].start()
             print(f"T{index} START!")
-        for task in tasks:
-            task.join()
-
-        if count_lines % _THREADS_LIMIT != 0:
-            t1 = threading.Thread(target=self.parseLINKS, args=(count_lines - (count_lines % _THREADS_LIMIT), count_lines))
-            t1.start()
-            t1.join()
+            tasks[index].join()
 
     def getArticleLINKSByThreads(self, max_page):
         setGlobals(self._provider, self._search_request)
 
-        pages = [[], [], [], []]
-        for i in range(0, max_page // _THREADS_LIMIT * _THREADS_LIMIT, _THREADS_LIMIT):
-            for j in range(0, _THREADS_LIMIT):
+        # Определяем количество потоков
+        count_threads = getCountThreads(max_page)
+
+        pages = []
+        for j in range(0, count_threads):
+            pages.append([])
+
+        # Распределяем страницы между потоками
+        for i in range(0, max_page // count_threads * count_threads, count_threads):
+            for j in range(0, count_threads):
                 pages[j].append(i + j)
-        if max_page % _THREADS_LIMIT != 0:
-            for i in range((max_page // _THREADS_LIMIT) * _THREADS_LIMIT, max_page):
+        if max_page % count_threads != 0:
+            for i in range((max_page // count_threads) * count_threads, max_page):
                 pages[i % 4].append(i)
         # print(pages)
 
+        # Запускаем потоки
         tasks = []
-        for i in range(0, _THREADS_LIMIT):
+        for i in range(0, count_threads):
             tasks.append(threading.Thread(target=getLINKSbyPage, args=(pages[i],)))
         for index, process in enumerate(tasks):
             process.start()
             print(f"T{index} START!")
+        print()
         for process in tasks:
             process.join()
-
-    def doWhileNoSuccess(self, try_count, type_function, function, driver, article):
-        if try_count > 4:
-            return "СЛАБОЕ ИНТЕРНЕТ-СОЕДИНЕНИЕ"
-        else:
-            flag = False
-            if type_function == "parseCrossRef":
-                if try_count > 0:
-                    flag = function(driver, article, try_count * 2)
-                else:
-                    flag = function(driver, article, 1)
-
-            elif type_function == "loadArticlePage":
-                flag = function(driver, article)
-
-            if flag == "SUCCESS" or flag == strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE:
-                return flag
-            else:
-                return self.doWhileNoSuccess(try_count + 1, type_function, function, driver, article)

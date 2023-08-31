@@ -1,5 +1,5 @@
+import json
 import time
-from UTILS import strings
 import logging
 import traceback
 
@@ -7,8 +7,10 @@ from selenium.common import WebDriverException, JavascriptException
 from selenium.webdriver.common.by import By
 from playwright.sync_api import sync_playwright
 
-import Provider as _provider
+from PROVIDERS import Provider
 from HANDLERS import FILEHandler as fHandler, JSONHandler as parseJSON
+from UTILS import strings
+
 
 logging.getLogger().setLevel(logging.INFO)
 
@@ -20,7 +22,7 @@ def wait_until(return_value, period=1):
     return False
 
 
-class Donaldson(_provider.Provider):
+class Donaldson(Provider.Provider):
     _main_url = "https://shop.donaldson.com"
     _catalog_url = "https://shop.donaldson.com/store/ru-ru/search?Ntt="
     _article_url = "https://shop.donaldson.com/store/ru-ru/product/"
@@ -32,8 +34,8 @@ class Donaldson(_provider.Provider):
 
     def __init__(self, producer_id, dbHandler):
         self._producer_id = producer_id
-        self._producer_name = dbHandler.getProducerById(self._producer_id)
         self._dbHandler = dbHandler
+        self._producer_name = dbHandler.getProducerById(self._producer_id)
 
     def getMainUrl(self):
         return self._main_url
@@ -44,8 +46,6 @@ class Donaldson(_provider.Provider):
             return False
         return [url_attr[6], url]
 
-    def getProducerId(self, article):
-        return self._dbHandler.getProducerByName("DONALDSON")[0]
 
     def search(self, driver, page_number, search_request):
         if page_number > 0:
@@ -93,53 +93,70 @@ class Donaldson(_provider.Provider):
             return False
         return driver
 
-    def parseCrossReference(self, driver, article, timeout=1.5):
+    # def parseCrossReference(self, driver, article, timeout=1.5):
+    #
+    #     article_id = article[0]
+    #     # try:
+    #     executing_return = driver.execute_script(
+    #         "document.getElementById(\"showAllCrossReferenceListButton\").click();" +
+    #         "let blocks = document.getElementsByClassName(\"searchCrossRef\");" +
+    #         "for(let i = 0; i < blocks.length; i++){" +
+    #         "blocks[i].style.display = \"unset\";" +
+    #         "blocks[i].parentElement.className = \"\";" +
+    #         "let tag_i = blocks[i].getElementsByTagName(\"i\");" +
+    #         "if(tag_i.length > 0)" +
+    #         "tag_i[0].click();" +
+    #         "}"
+    #         "return 1;")
+    #     wait_until(int(executing_return), int(timeout * 3))
+    #
+    #     count_analogs = 0
+    #
+    #     try:
+    #         elements = driver.find_elements(By.CLASS_NAME, "searchCrossRef")
+    #         count_cross_reference_elements = len(elements)
+    #         print("НАЙДЕНО ЭЛЕМЕНТОВ КРОСС-РЕФЕРЕНСА:" + str(count_cross_reference_elements))
+    #     except JavascriptException or IndexError:
+    #         return strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE
+    #
+    #     analog_producer_name = ""
+    #     analog_producer_id = -1
+    #     analogs = []
+    #     for index, elem in enumerate(elements, start=0):
+    #         if index % 3 == 0:
+    #             if elem.text != analog_producer_name:
+    #                 if len(analogs) > 0:
+    #                     self._dbHandler.insertArticleAnalogs(article_id, analogs)
+    #                     count_analogs += len(analogs)
+    #                     analogs = []
+    #                 analog_producer_name = elem.text
+    #                 analog_producer_id = self._dbHandler.insertProducer(analog_producer_name)
+    #         elif index % 3 == 1:
+    #             analog_article_name = elem.text
+    #             analog_article_id = self._dbHandler.insertArticle(analog_article_name, analog_producer_id)
+    #             analogs.append(analog_article_id)
+    #
+    #     if count_analogs > 0 and count_cross_reference_elements > 0:
+    #         return "SUCCESS"
+    #
+    #     return "НЕ ВЫЯВЛЕН НИ ОДИН АНАЛОГ!"
 
-        article_id = article[0]
-        # try:
-        executing_return = driver.execute_script(
-            "document.getElementById(\"showAllCrossReferenceListButton\").click();" +
-            "let blocks = document.getElementsByClassName(\"searchCrossRef\");" +
-            "for(let i = 0; i < blocks.length; i++){" +
-            "blocks[i].style.display = \"unset\";" +
-            "blocks[i].parentElement.className = \"\";" +
-            "let tag_i = blocks[i].getElementsByTagName(\"i\");" +
-            "if(tag_i.length > 0)" +
-            "tag_i[0].click();" +
-            "}"
-            "return 1;")
-        wait_until(int(executing_return), int(timeout * 3))
 
-        count_analogs = 0
+    def parseCrossReference(self, main_article_name, producer_name, cross_ref):
+        producer_id = self._dbHandler.getProducerByName(producer_name)[0]
+        print("PRODUCER_ID: " + str(producer_id))
+        main_article_id = self._dbHandler.insertArticle(main_article_name, producer_id)
+        for elem in cross_ref:
+            producer_name = elem['manufactureName']
+            producer_id = self._dbHandler.insertProducer(producer_name)
+            print("PRODUCER_ID: " + str(producer_id))
+            analog_article_names = elem['manufacturePartNumber']
+            analog_article_ids = []
+            for article_name in analog_article_names:
+                analog_article_ids.append(self._dbHandler.insertArticle(article_name, producer_id))
+            self._dbHandler.insertArticleAnalogs(main_article_id, analog_article_names)
 
-        try:
-            elements = driver.find_elements(By.CLASS_NAME, "searchCrossRef")
-            count_cross_reference_elements = len(elements)
-            print("НАЙДЕНО ЭЛЕМЕНТОВ КРОСС-РЕФЕРЕНСА:" + str(count_cross_reference_elements))
-        except JavascriptException or IndexError:
-            return strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE
 
-        analog_producer_name = ""
-        analog_producer_id = -1
-        analogs = []
-        for index, elem in enumerate(elements, start=0):
-            if index % 3 == 0:
-                if elem.text != analog_producer_name:
-                    if len(analogs) > 0:
-                        self._dbHandler.insertArticleAnalogs(article_id, analogs)
-                        count_analogs += len(analogs)
-                        analogs = []
-                    analog_producer_name = elem.text
-                    analog_producer_id = self._dbHandler.insertProducer(analog_producer_name)
-            elif index % 3 == 1:
-                analog_article_name = elem.text
-                analog_article_id = self._dbHandler.insertArticle(analog_article_name, analog_producer_id)
-                analogs.append(analog_article_id)
-
-        if count_analogs > 0 and count_cross_reference_elements > 0:
-            return "SUCCESS"
-
-        return "НЕ ВЫЯВЛЕН НИ ОДИН АНАЛОГ!"
 
 
     def getAnalogs(self, article_url, article_id):
@@ -159,7 +176,7 @@ class Donaldson(_provider.Provider):
             browser.close()
 
 
-    def saveJSON(self, article_url, article_name):
+    def saveJSON(self, article_url, article_name, search_request):
 
         print("saveJSON():")
 
@@ -189,7 +206,7 @@ class Donaldson(_provider.Provider):
             article_json = parseJSON.generateArticleJSON(article_name, "DONALDSON", "DONALDSON", article_info_json)
             # print("\tgenerateArticleJSON() -> completed")
 
-            fHandler.appendJSONToFile("DONALDSON", article_json)
+            fHandler.appendJSONToFile("DONALDSON", article_json, search_request)
             print("\tappendToFile() -> completed")
 
             browser.close()

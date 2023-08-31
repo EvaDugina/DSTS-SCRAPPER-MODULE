@@ -1,6 +1,6 @@
 import json
-
 import threading
+
 
 def parseCrossRefDonaldsonJSON(start_index, end_index, json_string, article_id, number_thread, dbHandler):
     print(f'T{number_thread}: START PARSING!')
