@@ -60,7 +60,7 @@ class Donaldson(Provider.Provider):
         return driver
 
     def getPageCount(self, driver, search_request):
-        driver.get(self._catalog_url + search_request)
+        driver.get(self._catalogue_url + search_request)
         lastButton = driver.find_elements(By.CLASS_NAME, "lastButton")
         if len(lastButton) > 0:
             try:

@@ -147,14 +147,14 @@ class WebWorker:
 
         if self._catalogue_name == "DONALDSON":
             print("ПО САЙТУ-ПРОИЗВОДИТЕЛЮ: DONALDSON")
-            producer_id = self._dbHandler.insertProducer(self._catalogue_name)
-            provider = dl.Donaldson(producer_id, self._dbHandler)
+            producer_id = self._dbHandler.insertProducer(self._catalogue_name, self._catalogue_name)
+            provider = Donaldson.Donaldson(producer_id, self._dbHandler)
         # elif site_name == "FLEETGUARD":
         #     producer_id = dbHandler.insertProducer(site_name)
         #     provider = fl.Fleetguard(producer_id)
         elif self._catalogue_name == "FIL-FILTER":
             print("ПО САЙТУ-ПРОИЗВОДИТЕЛЮ: FIL-FILTER")
-            producer_id = self._dbHandler.insertProducer(self._catalogue_name)
+            producer_id = self._dbHandler.insertProducer(self._catalogue_name, self._catalogue_name)
             provider = ff.FilFilter(producer_id, self._dbHandler)
 
         else:
@@ -274,8 +274,7 @@ class WebWorker:
 
         # Добавляем поток с нераспределёнными ссылками
         if count_lines % count_threads != 0:
-            parts.append([])
-            parts[len(parts)-1].append([count_lines - (count_lines % count_threads), count_lines])
+            parts.append([count_lines - (count_lines % count_threads), count_lines])
 
         # Запускаем потоки
 
@@ -285,9 +284,10 @@ class WebWorker:
         for i in range(0, count_threads):
             tasks[i].start()
             print(f"T{i} START!")
+        for i in range(0, count_threads):
             tasks[i].join()
         if count_lines % count_threads != 0:
-            index = len(tasks)-1
+            index = len(parts)-1
             tasks.append(threading.Thread(target=self.parseLINKS, args=(parts[index][0], parts[index][1])))
             tasks[index].start()
             print(f"T{index} START!")

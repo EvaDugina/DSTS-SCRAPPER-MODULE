@@ -5,11 +5,6 @@ import psycopg2
 from UTILS import parse
 
 
-# conn = psycopg2.connect(dbname='dsts', user='postgres', port='5432',
-#                         password='postgres', host='localhost')
-# cursor = conn.cursor()
-
-
 class DBWorker:
     CONNECTION = None
 

@@ -56,7 +56,7 @@ def getCountJSONSLines(catalogue_name, file_path):
 def getSearchRequests():
     search_requests = []
     for line in open(f'SEARCH_REQUESTS.txt'):
-        if line == "____":
+        if line.rstrip() == "____":
             break
         search_requests.append(line.rstrip().split(" "))
     return search_requests

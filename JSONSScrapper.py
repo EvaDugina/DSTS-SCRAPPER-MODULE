@@ -11,10 +11,10 @@ if __name__=="__main__":
         search_request = request[1]
 
         print("~~~~~~~~")
-        print("SEARCH REQUEST: " + request + " -> START!")
+        print("SEARCH REQUEST: " + search_request + " -> START!")
         print()
         webWorker = wHandl.WebWorker(catalogue_name, search_request)
         status_parse = webWorker.pullCrossRefToDB()
-        print("SEARCH REQUEST: " + request + " -> END!")
+        print("SEARCH REQUEST: " + search_request + " -> END!")
         print("~~~~~~~~")
         print()

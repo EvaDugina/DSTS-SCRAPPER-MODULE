@@ -37,8 +37,13 @@ CREATE TABLE articles_details ( -- таблица информации о тов
 
 CREATE TABLE producers_dsts_names	(
 	id serial,
+	producer_id integer UNIQUE, -- --> Идентификатор производителя
 	producer_name text UNIQUE, -- --> название производителя в системе ДСТС
 	CONSTRAINT producers_dsts_name_pkey PRIMARY KEY (id)
 );
+
+GRANT ALL PRIVILEGES ON DATABASE dsts TO dsts;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO dsts;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO dsts;
 
 
