@@ -2,6 +2,8 @@ import json
 
 import psycopg2
 
+from HANDLERS import FILEHandler as fHandl
+
 from UTILS import parse
 
 
@@ -179,7 +181,7 @@ class DBWorker:
             self.CONNECTION.commit()
             article_id = cursor.fetchone()[0]
 
-            print(f"\t\t\tINSERTED ARTICLE: {article_id} - {article_name} {producer_id}")
+            fHandl.appendToFileLog(f"\t\t\tINSERTED ARTICLE: {article_id} - {article_name} {producer_id}")
         else:
             article = self.getArticleByName(article_name, producer_id)
             article_id = article[0]
@@ -212,7 +214,7 @@ class DBWorker:
 
             producer_id = cursor.fetchone()[0]
 
-            print(f"\t\tINSERTED PRODUCER: {producer_id} - {producer_name_with_spaces}")
+            fHandl.appendToFileLog(f"\t\tINSERTED PRODUCER: {producer_id} - {producer_name_with_spaces}")
         else:
             producer = self.getProducerByName(producer_name_with_spaces)
             producer_id = producer[0]
@@ -244,7 +246,7 @@ class DBWorker:
         cursor.execute(query)
         self.CONNECTION.commit()
 
-        print(f"\t\t\tINSERTED ANALOG g{group_id}: {article_id}")
+        fHandl.appendToFileLog(f"\t\t\tINSERTED ANALOG g{group_id}: {article_id}")
 
         return group_id
 
@@ -260,7 +262,7 @@ class DBWorker:
         for analog_article_id in analog_article_ids:
             if not self.isAnalogInComparisonTable(article_id, analog_article_id, catalogue_name):
                 query += queryInsertArticlesComparison(group_id, analog_article_id, catalogue_name)
-                print(f"\t\t\tINSERTED ANALOGS: {article_id} {analog_article_id}")
+                fHandl.appendToFileLog(f"\t\t\tINSERTED ANALOGS: {article_id} {analog_article_id}")
 
         if query != "":
             cursor = self.CONNECTION.cursor()
@@ -278,7 +280,7 @@ class DBWorker:
             cursor.execute(query)
             self.CONNECTION.commit()
 
-            print(f"\t\tINSERTED PRODUCER_NAME_VARIATION: {producer_id} - {name_variation} - {catalogue_name}")
+            fHandl.appendToFileLog(f"\t\tINSERTED PRODUCER_NAME_VARIATION: {producer_id} - {name_variation} - {catalogue_name}")
 
 
     def insertArticleInfo(self, article_id, catalogue_name, output_json):
@@ -290,7 +292,7 @@ class DBWorker:
             cursor.execute(query)
             self.CONNECTION.commit()
 
-            print(f"\t\tINSERTED ARTICLE INFO: {article_id} - {catalogue_name}")
+            fHandl.appendToFileLog(f"\t\tINSERTED ARTICLE INFO: {article_id} - {catalogue_name}")
 
 
     #####################################################################

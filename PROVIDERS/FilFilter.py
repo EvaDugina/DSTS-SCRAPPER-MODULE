@@ -145,7 +145,7 @@ class FilFilter(Provider.Provider):
         max_page = int(text_maxPages.split(" ")[2])
 
         count_cross_reference_elements = int(text_maxPages.split(" ")[4])
-        print("НАЙДЕНО ЭЛЕМЕНТОВ КРОСС-РЕФЕРЕНСА:" + str(count_cross_reference_elements))
+        fHandler.appendToFileLog("НАЙДЕНО ЭЛЕМЕНТОВ КРОСС-РЕФЕРЕНСА:" + str(count_cross_reference_elements))
         # except IndexError:
         #     return strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE
 

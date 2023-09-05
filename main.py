@@ -2,7 +2,7 @@ from tkinter import *
 from tkinter import messagebox
 from tkinter.ttk import Combobox
 
-from HANDLERS import WEBHandler as web
+from HANDLERS import WEBHandler as web, FILEHandler as fHandl
 
 
 _width = 800
@@ -17,7 +17,7 @@ window.resizable = False
 def clickedPullCrossRef():
     search_request = input_article_name.get()
     catalogue_name = combo_producer_name.get()
-    print(search_request + " " + catalogue_name)
+    fHandl.appendToFileLog(search_request + " " + catalogue_name)
     if checkFiledsEmpty(search_request, catalogue_name):
 
         webWorker = web.WebWorker(catalogue_name, search_request)

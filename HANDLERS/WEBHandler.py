@@ -19,19 +19,19 @@ _THREADS_LIMIT = 4
 
 def getProviderAndProducerId(catalogue_name, dbHandler):
     if catalogue_name == "DONALDSON":
-        print("ПО САЙТУ-ПРОИЗВОДИТЕЛЮ: DONALDSON")
+        fHandler.appendToFileLog("ПО САЙТУ-ПРОИЗВОДИТЕЛЮ: DONALDSON")
         producer_id = dbHandler.insertProducer(catalogue_name, catalogue_name)
         provider = Donaldson.Donaldson(producer_id, dbHandler)
     # elif site_name == "FLEETGUARD":
     #     producer_id = dbHandler.insertProducer(site_name)
     #     provider = fl.Fleetguard(producer_id)
     elif catalogue_name == "FIL-FILTER":
-        print("ПО САЙТУ-ПРОИЗВОДИТЕЛЮ: FIL-FILTER")
+        fHandler.appendToFileLog("ПО САЙТУ-ПРОИЗВОДИТЕЛЮ: FIL-FILTER")
         producer_id = dbHandler.insertProducer(catalogue_name, catalogue_name)
         provider = FilFilter.FilFilter(producer_id, dbHandler)
 
     else:
-        print("#### ОШИБКА! Выбран некорректный сайт производителя: " + str(catalogue_name))
+        fHandler.appendToFileLog("#### ОШИБКА! Выбран некорректный сайт производителя: " + str(catalogue_name))
         return strings.UNDEFIND_PRODUCER + ": " + str(catalogue_name)
 
     return provider
@@ -64,7 +64,7 @@ def getBrowser():
         # driver = webdriver.Edge(options=options)
         driver = webdriver.Edge()
     except Exception as ex:
-        print(ex)
+        fHandler.appendToFileLog(ex)
         try:
             # options = webdriver.ChromeOptions()
             # options.add_argument("user-agent=Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:84.0) Gecko/20100101 Firefox/84.0")
@@ -80,7 +80,7 @@ def getBrowser():
                 try:
                     driver = webdriver.Ie()
                 except:
-                    print("БРАУЗЕР НЕ НАЙДЕН!")
+                    fHandler.appendToFileLog("БРАУЗЕР НЕ НАЙДЕН!")
     return driver
 
 
@@ -98,7 +98,7 @@ def getLINKSbyPage(pages):
         # ПОИСК БРАУЗЕРА ДЛЯ ИСПОЛЬЗОВАНИЯ
         driver = getBrowser()
         if driver is None:
-            print("#### ОШИБКА! Не найден браузер")
+            fHandler.appendToFileLog("#### ОШИБКА! Не найден браузер")
             return strings.UNDEFIND_BROWSER
 
         for page in pages:
@@ -106,22 +106,22 @@ def getLINKSbyPage(pages):
             driver = _provider.search(driver, page, _search_request)
             if driver == strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE:
                 return strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE
-            print(f"T{page}: search() -> completed")
+            fHandler.appendToFileLog(f"T{page}: search() -> completed")
 
             articles = _provider.parseSearchResult(driver)
             if articles == strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE:
                 return strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE
-            print(f"T{page}: parseSearchResult() -> completed")
+            fHandler.appendToFileLog(f"T{page}: parseSearchResult() -> completed")
 
             for article in articles:
                 fHandler.appendLINKtoFile(_catalogue_name, article[0] + " " + article[1], _search_request)
-            print(f"T{page}: appendLINKtoFile() -> completed")
+            fHandler.appendToFileLog(f"T{page}: appendLINKtoFile() -> completed")
 
-            print(f'PAGE №{page} -> completed')
-            print()
+            fHandler.appendToFileLog(f'PAGE №{page} -> completed')
+            fHandler.appendToFileLog("\n")
 
     except Exception as ex:
-        print(ex)
+        fHandler.appendToFileLog(ex)
 
     finally:
         driver.close()
@@ -146,24 +146,23 @@ class WebWorker:
 
         fHandler.createLINKSDir(self._catalogue_name)
         fHandler.createJSONSDir(self._catalogue_name)
-        fHandler.createLOGSDir()
 
     def getProvider(self):
 
         if self._catalogue_name == "DONALDSON":
-            print("ПО САЙТУ-ПРОИЗВОДИТЕЛЮ: DONALDSON")
+            fHandler.appendToFileLog("ПО САЙТУ-ПРОИЗВОДИТЕЛЮ: DONALDSON")
             producer_id = self._dbHandler.insertProducer(self._catalogue_name, self._catalogue_name)
             provider = Donaldson.Donaldson(producer_id, self._dbHandler)
         # elif site_name == "FLEETGUARD":
         #     producer_id = dbHandler.insertProducer(site_name)
         #     provider = fl.Fleetguard(producer_id)
         elif self._catalogue_name == "FIL-FILTER":
-            print("ПО САЙТУ-ПРОИЗВОДИТЕЛЮ: FIL-FILTER")
+            fHandler.appendToFileLog("ПО САЙТУ-ПРОИЗВОДИТЕЛЮ: FIL-FILTER")
             producer_id = self._dbHandler.insertProducer(self._catalogue_name, self._catalogue_name)
             provider = ff.FilFilter(producer_id, self._dbHandler)
 
         else:
-            print("#### ОШИБКА! Выбран некорректный сайт производителя: " + str(self._catalogue_name))
+            fHandler.appendToFileLog("#### ОШИБКА! Выбран некорректный сайт производителя: " + str(self._catalogue_name))
             return strings.UNDEFIND_PRODUCER + ": " + str(self._catalogue_name)
 
         return provider
@@ -171,20 +170,20 @@ class WebWorker:
 
     def pullCrossRefToDB(self):
 
-        print("----> pullCrossRefToDB() ")
+        fHandler.appendToFileLog("----> pullCrossRefToDB() ")
         start_time = datetime.datetime.now()
 
         # ПРОВЕРКА ИНТЕРНЕТ СОЕДИНЕНИЯ
         try:
             requests.head(self._provider.getMainUrl(), timeout=1)
         except:
-            print("#### ОШИБКА! Отсутствует интернет-соединение")
+            fHandler.appendToFileLog("#### ОШИБКА! Отсутствует интернет-соединение")
             return strings.INTERNET_ERROR
 
         # ПОЛУЧАЕМ КОЛИЧЕСТВО СТРАНИЦ
         driver = getBrowser()
         if driver is None:
-            print("#### ОШИБКА! Не найден браузер")
+            fHandler.appendToFileLog("#### ОШИБКА! Не найден браузер")
             return strings.UNDEFIND_BROWSER
         max_page = self._provider.getPageCount(driver, self._search_request)
         if max_page == strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE:
@@ -194,26 +193,26 @@ class WebWorker:
         driver.close()
         driver.quit()
 
-        print()
+        fHandler.appendToFileLog("\n")
 
         # Вытаскиваем ссылки на элементы
         start_time_links = datetime.datetime.now()
         self.getArticleLINKSByThreads(max_page)
         end_time_links = datetime.datetime.now()
-        print("getArticleLinksByThreads() -> completed! ВРЕМЯ: " +
+        fHandler.appendToFileLog("getArticleLinksByThreads() -> completed! ВРЕМЯ: " +
               str(int((end_time_links-start_time_links).total_seconds())) + " сек.")
-        print()
+        fHandler.appendToFileLog("\n")
 
         # Генерируем JSONS
         start_time_generating_jsons = datetime.datetime.now()
         self.generateJSONSbyThreads()
         end_time_generating_jsons = datetime.datetime.now()
-        print("getArticleLinksByThreads() -> completed! ВРЕМЯ: " +
+        fHandler.appendToFileLog("getArticleLinksByThreads() -> completed! ВРЕМЯ: " +
               str(int((end_time_generating_jsons - start_time_generating_jsons).total_seconds())) + " сек.")
-        print()
+        fHandler.appendToFileLog("\n")
 
         end_time = datetime.datetime.now()
-        print("<---- END pullCrossRefToDB(): " + str(int((end_time-start_time).total_seconds())) + " сек.\n\n")
+        fHandler.appendToFileLog("<---- END pullCrossRefToDB(): " + str(int((end_time-start_time).total_seconds())) + " сек.\n\n")
 
         return "ССЫЛКИ ВЫТАЩЕНЫ УСПЕШНО!"
 
@@ -227,15 +226,15 @@ class WebWorker:
             # ПОИСК БРАУЗЕРА ДЛЯ ИСПОЛЬЗОВАНИЯ
             driver = getBrowser()
             if driver is None:
-                print("#### ОШИБКА! Не найден браузер")
+                fHandler.appendToFileLog("#### ОШИБКА! Не найден браузер")
                 return strings.UNDEFIND_BROWSER
 
             articles = fHandler.getLINKSfromFileByLines("DONALDSON", self._search_request, start_line, end_line)
-            print()
+            fHandler.appendToFileLog("\n")
 
             for article in articles:
 
-                print(f'{article[0]}')
+                fHandler.appendToFileLog(f'{article[0]}')
 
                 # PARSE PAGE
                 driver = provider.loadArticlePage(driver, article[1])
@@ -243,16 +242,16 @@ class WebWorker:
                     return "НЕ УДАЛОСЬ ЗАГРУЗИТЬ СТРАНИЦУ АРТИКУЛА"
                 if driver == strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE:
                     return strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE
-                print("loadArticlePage() -> completed")
+                fHandler.appendToFileLog("loadArticlePage() -> completed")
                 provider.saveJSON(article[1], article[0], self._search_request)
 
-                print()
+                fHandler.appendToFileLog("\n")
 
                 # self._provider.getAnalogs(article[1], article[0])
                 # flag = doWhileNoSuccess(0, "parseCrossRef", self._provider.parseCrossReference, driver, article)
 
         except Exception as ex:
-            print(ex)
+            fHandler.appendToFileLog(ex)
 
         finally:
             driver.close()
@@ -287,14 +286,14 @@ class WebWorker:
             tasks.append(threading.Thread(target=self.parseLINKS, args=(parts[i][0], parts[i][1])))
         for i in range(0, count_threads):
             tasks[i].start()
-            print(f"T{i} START!")
+            fHandler.appendToFileLog(f"T{i} START!")
         for i in range(0, count_threads):
             tasks[i].join()
         if count_lines % count_threads != 0:
             index = len(parts)-1
             tasks.append(threading.Thread(target=self.parseLINKS, args=(parts[index][0], parts[index][1])))
             tasks[index].start()
-            print(f"T{index} START!")
+            fHandler.appendToFileLog(f"T{index} START!")
             tasks[index].join()
 
     def getArticleLINKSByThreads(self, max_page):
@@ -323,7 +322,7 @@ class WebWorker:
             tasks.append(threading.Thread(target=getLINKSbyPage, args=(pages[i],)))
         for index, process in enumerate(tasks):
             process.start()
-            print(f"T{index} START!")
-        print()
+            fHandler.appendToFileLog(f"T{index} START!")
+        fHandler.appendToFileLog("\n")
         for process in tasks:
             process.join()

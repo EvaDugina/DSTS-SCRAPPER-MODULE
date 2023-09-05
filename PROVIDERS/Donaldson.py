@@ -145,11 +145,11 @@ class Donaldson(Provider.Provider):
 
     def parseCrossReference(self, main_article_name, producer_name, cross_ref):
         main_producer_id = self._dbHandler.insertProducer(producer_name, self._catalogue_name)
-        print("----> PRODUCER_ID: " + str(main_producer_id))
+        fHandler.appendToFileLog("----> PRODUCER_ID: " + str(main_producer_id))
         main_article_id = self._dbHandler.insertArticle(main_article_name, main_producer_id)
         for elem in cross_ref:
             producer_name = elem['manufactureName']
-            print("\t--> PRODUCER_NAME: " + str(producer_name))
+            fHandler.appendToFileLog("\t--> PRODUCER_NAME: " + str(producer_name))
             producer_id = self._dbHandler.insertProducer(producer_name, self._catalogue_name)
             analog_article_names = elem['manufacturePartNumber']
             analog_article_ids = []
@@ -189,7 +189,7 @@ class Donaldson(Provider.Provider):
 
     def saveJSON(self, article_url, article_name, search_request):
 
-        print("saveJSON():")
+        fHandler.appendToFileLog("saveJSON():")
 
         with sync_playwright() as p:
             browser = p.chromium.launch()
@@ -218,10 +218,10 @@ class Donaldson(Provider.Provider):
             # print("\tgenerateArticleJSON() -> completed")
 
             fHandler.appendJSONToFile("DONALDSON", article_json, search_request)
-            print("\tappendToFile() -> completed")
+            fHandler.appendToFileLog("\tappendToFile() -> completed")
 
             browser.close()
-            print("saveJSON() -> completed")
+            fHandler.appendToFileLog("saveJSON() -> completed")
 
 
     with sync_playwright() as p:
@@ -231,14 +231,14 @@ class Donaldson(Provider.Provider):
             if "fetchproductcrossreflist?" in response.url and len(self._article_cross_ref_json) == 0:
                 try:
                     self._article_cross_ref_json['crossReference'] = response.json()['crossReferenceList']
-                    print("\t_article_cross_ref_json -> НАЙДЕН!")
+                    fHandler.appendToFileLog("\t_article_cross_ref_json -> НАЙДЕН!")
                 except:
                     logging.warning(traceback.format_exc())
             if "fetchProductAttrAndRecentlyViewed?" in response.url and len(self._article_info_json) == 0:
                 article_info_characteristic['productMainInfo'] = response.json()['productAttributesResponse']['dynamicAttributes']
                 article_info_else['productSecondaryInfo'] = response.json()['recentlyViewedProductResponse']['recentlyViewedProducts'][0]
                 self._article_info_json = {**article_info_characteristic, **article_info_else}
-                print("\t_article_info_json -> НАЙДЕН!")
+                fHandler.appendToFileLog("\t_article_info_json -> НАЙДЕН!")
 
 
     def goBack(self, driver):

@@ -1,9 +1,10 @@
 import json
 import threading
+from HANDLERS import FILEHandler as fHandl
 
 
 def parseCrossRefDonaldsonJSON(start_index, end_index, json_string, article_id, number_thread, dbHandler):
-    print(f'T{number_thread}: START PARSING!')
+    fHandl.appendToFileLog(f'T{number_thread}: START PARSING!')
     for i in range (start_index, end_index+1):
         cross_ref_el = json_string['crossReferenceList'][i]
 
@@ -17,7 +18,7 @@ def parseCrossRefDonaldsonJSON(start_index, end_index, json_string, article_id, 
 
         dbHandler.insertArticleAnalogs(article_id, analogs)
 
-    print(f'T{number_thread}: END PARSING!')
+    fHandl.appendToFileLog(f'T{number_thread}: END PARSING!')
 
 
 def parseCrossRef(json_string, article_id, dbHandler):

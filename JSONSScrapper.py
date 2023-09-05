@@ -3,7 +3,10 @@
 from HANDLERS import WEBHandler as wHandl
 from HANDLERS import FILEHandler as fHandl
 
+
 if __name__=="__main__":
+
+    fHandl.createLOGSDir()
 
     search_requests = fHandl.getSearchRequests()
 
@@ -12,13 +15,13 @@ if __name__=="__main__":
         catalogue_name = request[0]
         search_request = request[1]
 
-        print("~~~~~~~~")
-        print("SEARCH REQUEST: " + search_request + " -> START!")
-        print()
+        fHandl.appendToFileLog("~~~~~~~~")
+        fHandl.appendToFileLog("SEARCH REQUEST: " + search_request + " -> START!")
+        fHandl.appendToFileLog("\n")
         webWorker = wHandl.WebWorker(catalogue_name, search_request)
         status_parse = webWorker.pullCrossRefToDB()
-        print("SEARCH REQUEST: " + search_request + " -> END!")
-        print("~~~~~~~~")
-        print()
+        fHandl.appendToFileLog("SEARCH REQUEST: " + search_request + " -> END!")
+        fHandl.appendToFileLog("~~~~~~~~")
+        fHandl.appendToFileLog("\n")
 
         fHandl.moveLINKToCompleated(catalogue_name, search_request)

@@ -1,3 +1,5 @@
+import datetime
+import os
 import shutil
 from os import listdir
 from pathlib import Path
@@ -15,18 +17,26 @@ def createJSONSDir(catalogue_name):
     Path(f'JSONS/{catalogue_name}/_completed/').mkdir(parents=True, exist_ok=True)
 
 
+
 def moveLINKToCompleated(catalogue_name, search_request):
-    shutil.move(f'LINKS/{catalogue_name}/{search_request}.txt', f'LINKS/{catalogue_name}/_completed')
+    number = getCountCompleatedLINKSFiles(catalogue_name) + 1
+    os.rename(f'LINKS/{catalogue_name}/{search_request}.txt', f'LINKS/{catalogue_name}/{number}_{search_request}.txt')
+    shutil.move(f'LINKS/{catalogue_name}/{number}_{search_request}.txt', f'LINKS/{catalogue_name}/_completed')
 
 def moveJSONToCompleated(catalogue_name, search_request):
-    shutil.move(f'JSONS/{catalogue_name}/{search_request}.txt', f'JSONS/{catalogue_name}/_completed')
+    number = getCountCompleatedJSONSFiles(catalogue_name) + 1
+    os.rename(f'JSONS/{catalogue_name}/{search_request}.txt', f'JSONS/{catalogue_name}/{number}_{search_request}.txt')
+    shutil.move(f'JSONS/{catalogue_name}/{number}_{search_request}.txt', f'JSONS/{catalogue_name}/_completed')
 
-def appendToFileOutput(text):
-    with open(f'LOGS/output.txt', 'a+') as f:
+
+
+def appendToFileOutput(text, number):
+    # prefix = datetime.datetime.now().strftime("%d%m%Y%H%M%S")
+    with open(f'LOGS/{number}_output.txt', 'a+') as f:
         f.write(text + "\n")
 
 def appendToFileLog(text):
-    with open(f'LOGS/output.txt', 'a+') as f:
+    with open(f'LOGS/log.txt', 'a+') as f:
         f.write(text + "\n")
 
 def appendJSONToFile(catalogue_name, text, search_request):
@@ -36,6 +46,8 @@ def appendJSONToFile(catalogue_name, text, search_request):
 def appendLINKtoFile(catalogue_name, text, search_request):
     with open(f'LINKS/{catalogue_name}/{search_request}.txt', 'a+') as f:
         f.write(text + "\n")
+
+
 
 def getLINKSfromFile(catalogue_name, search_request):
     links = []
@@ -67,6 +79,8 @@ def getJSONSfromFileByLines(catalogue_name, search_request, start_line, end_line
             index += 1
     return links
 
+
+
 def getCountLINKSLines(catalogue_name, file_path):
     num_lines = 0
     for line in open(f'LINKS/{catalogue_name}/{file_path}'):
@@ -75,9 +89,23 @@ def getCountLINKSLines(catalogue_name, file_path):
 
 def getCountJSONSLines(catalogue_name, file_path):
     num_lines = 0
-    for line in open(f'LINKS/{catalogue_name}/{file_path}'):
+    for line in open(f'JSONS/{catalogue_name}/{file_path}'):
         num_lines += 1
     return num_lines
+
+def getCountCompleatedLINKSFiles(catalogue_name):
+    path = f"LINKS/{catalogue_name}/_completed"
+    return len(listdir(path))
+
+def getCountCompleatedJSONSFiles(catalogue_name):
+    path = f"JSONS/{catalogue_name}/_completed"
+    return len(listdir(path))
+
+def getCountCompleatedOUTPUTFiles():
+    path = f"LOGS"
+    return len(listdir(path))-1
+
+
 
 def getSearchRequests():
     search_requests = []
