@@ -9,8 +9,8 @@ class DBWorker:
     CONNECTION = None
 
     def __init__(self, port):
-        self.CONNECTION = psycopg2.connect(dbname='dsts', user='postgres', port=port,
-                        password='postgres', host='localhost')
+        self.CONNECTION = psycopg2.connect(dbname='dsts', user='dsts', port=port,
+                        password='123456', host='localhost')
 
 
     def getArticleById(self, article_id) -> list:
@@ -156,10 +156,10 @@ class DBWorker:
         cursor.execute(query)
         self.CONNECTION.commit()
 
-        if cursor.fetchone()[0] == None:
+        if not cursor.fetchall():
             return 0
 
-        return cursor.fetchone()[0]
+        return cursor.fetchone()
 
 
     #####################################################################

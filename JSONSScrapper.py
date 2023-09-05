@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 from HANDLERS import WEBHandler as wHandl
 from HANDLERS import FILEHandler as fHandl
 
@@ -18,3 +20,5 @@ if __name__=="__main__":
         print("SEARCH REQUEST: " + search_request + " -> END!")
         print("~~~~~~~~")
         print()
+
+        fHandl.moveLINKToCompleated(catalogue_name, search_request)

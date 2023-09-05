@@ -34,9 +34,7 @@ def parseJSONS(start_line, end_line):
         print("parseCrossReference() -> completed! ВРЕМЯ: " +
               str(int((end_time_parsing_jsons - start_time_parsing_jsons).total_seconds())) + " сек.")
 
-
-
-
+        fHandl.appendToFileOutput(f'{article_name} ИЗ КАТАЛОГА {catalogue_name} УСПЕШНО ДОБАВЛЕН!')
 
     print()
 
@@ -63,8 +61,7 @@ def parseJSONSbyThreads(catalogue_name, search_request):
 
     # Добавляем поток с нераспределёнными ссылками
     if count_lines % count_threads != 0:
-        parts.append([])
-        parts[len(parts) - 1].append([count_lines - (count_lines % count_threads), count_lines])
+        parts.append([count_lines - (count_lines % count_threads), count_lines])
 
     # Запускаем потоки
 
@@ -76,7 +73,7 @@ def parseJSONSbyThreads(catalogue_name, search_request):
         print(f"T{i} START!")
         tasks[i].join()
     if count_lines % count_threads != 0:
-        index = len(tasks) - 1
+        index = len(parts) - 1
         tasks.append(threading.Thread(target=parseJSONS, args=(parts[index][0], parts[index][1])))
         tasks[index].start()
         print(f"T{index} START!")
@@ -121,3 +118,5 @@ if __name__=="__main__":
         print("parseJSONSbyThreads() -> completed! ВРЕМЯ: " +
               str(int((end_time_parsing_jsons - start_time_parsing_jsons).total_seconds())) + " сек.")
         print()
+
+        fHandl.moveJSONToCompleated(catalogue_name, search_request)

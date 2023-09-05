@@ -1,15 +1,41 @@
+import shutil
 from os import listdir
+from pathlib import Path
 
+
+def createLOGSDir():
+    Path(f'LOGS/').mkdir(parents=True, exist_ok=True)
+
+def createLINKSDir(catalogue_name):
+    Path(f'LINKS/{catalogue_name}/').mkdir(parents=True, exist_ok=True)
+    Path(f'LINKS/{catalogue_name}/_completed/').mkdir(parents=True, exist_ok=True)
+
+def createJSONSDir(catalogue_name):
+    Path(f'JSONS/{catalogue_name}/').mkdir(parents=True, exist_ok=True)
+    Path(f'JSONS/{catalogue_name}/_completed/').mkdir(parents=True, exist_ok=True)
+
+
+def moveLINKToCompleated(catalogue_name, search_request):
+    shutil.move(f'LINKS/{catalogue_name}/{search_request}.txt', f'LINKS/{catalogue_name}/_completed')
+
+def moveJSONToCompleated(catalogue_name, search_request):
+    shutil.move(f'JSONS/{catalogue_name}/{search_request}.txt', f'JSONS/{catalogue_name}/_completed')
+
+def appendToFileOutput(text):
+    with open(f'LOGS/output.txt', 'a+') as f:
+        f.write(text + "\n")
+
+def appendToFileLog(text):
+    with open(f'LOGS/output.txt', 'a+') as f:
+        f.write(text + "\n")
 
 def appendJSONToFile(catalogue_name, text, search_request):
-    fp = open(f'JSONS/{catalogue_name}/{search_request}.txt', 'a')
-    fp.write(text + "\n")
-    fp.close()
+    with open(f'JSONS/{catalogue_name}/{search_request}.txt', 'a+') as f:
+        f.write(text + "\n")
 
 def appendLINKtoFile(catalogue_name, text, search_request):
-    fp = open(f'LINKS/{catalogue_name}/{search_request}.txt', 'a')
-    fp.write(text + "\n")
-    fp.close()
+    with open(f'LINKS/{catalogue_name}/{search_request}.txt', 'a+') as f:
+        f.write(text + "\n")
 
 def getLINKSfromFile(catalogue_name, search_request):
     links = []
@@ -66,6 +92,8 @@ def getElementsForParse():
     path = "JSONS"
     for producer_name in listdir(path):
         for file_name in listdir(path + "/" + producer_name):
+            if file_name == "_completed":
+                continue
             search_request = file_name.split(".")[0]
             if search_request != producer_name:
                 elements.append([producer_name, search_request])
@@ -81,6 +109,7 @@ def deleteSimilarLinesFromJSON(catalogue_name, search_request):
     for line in lines_seen:
         outfile.write(line)
     outfile.close()
+
 
 
 

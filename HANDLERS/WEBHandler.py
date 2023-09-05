@@ -71,7 +71,8 @@ def getBrowser():
             # options.add_argument("--disable-blink-features=AutomationControlled")
             # https://www.youtube.com/watch?v=EMMY9t6_R4A
             # options.add_argument("--lang=ru")
-            driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()))
+            # driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()))
+            driver = webdriver.Chrome()
         except:
             try:
                 driver = webdriver.Firefox()
@@ -91,7 +92,7 @@ def getCountThreads(count_elements):
 
 
 def getLINKSbyPage(pages):
-    global _provider, _search_request
+    global _provider, _search_request, _catalogue_name
 
     try:
         # ПОИСК БРАУЗЕРА ДЛЯ ИСПОЛЬЗОВАНИЯ
@@ -113,7 +114,7 @@ def getLINKSbyPage(pages):
             print(f"T{page}: parseSearchResult() -> completed")
 
             for article in articles:
-                fHandler.appendLINKtoFile("DONALDSON", article[0] + " " + article[1], _search_request)
+                fHandler.appendLINKtoFile(_catalogue_name, article[0] + " " + article[1], _search_request)
             print(f"T{page}: appendLINKtoFile() -> completed")
 
             print(f'PAGE №{page} -> completed')
@@ -142,6 +143,10 @@ class WebWorker:
         self._search_request = request
         self._dbHandler = db.DBWorker('5432')
         self._provider = self.getProvider()
+
+        fHandler.createLINKSDir(self._catalogue_name)
+        fHandler.createJSONSDir(self._catalogue_name)
+        fHandler.createLOGSDir()
 
     def getProvider(self):
 
@@ -256,7 +261,6 @@ class WebWorker:
         return "JSONS вытащены успешно!"
 
     def generateJSONSbyThreads(self):
-        setGlobalCatalogueName(self._catalogue_name)
 
         count_lines = fHandler.getCountLINKSLines(self._catalogue_name, f"{self._search_request}.txt")
 
@@ -295,6 +299,7 @@ class WebWorker:
 
     def getArticleLINKSByThreads(self, max_page):
         setGlobals(self._provider, self._search_request)
+        setGlobalCatalogueName(self._catalogue_name)
 
         # Определяем количество потоков
         count_threads = getCountThreads(max_page)
