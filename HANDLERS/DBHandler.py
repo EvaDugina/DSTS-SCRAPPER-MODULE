@@ -158,11 +158,11 @@ class DBWorker:
         cursor.execute(query)
         self.CONNECTION.commit()
 
-        if not cursor.fetchall():
+        if not cursor.rowcount:
             return 0
 
-        return cursor.fetchone()
-
+        # return cursor.fetchall()
+        return cursor.rowcount
 
     #####################################################################
     # INSERTS TO DB
@@ -238,7 +238,11 @@ class DBWorker:
 
         # Добавляем себя в качестве аналога
         if group_id == -1:
-            group_id = self.getMaxGroupId() + 1
+            group_id = self.getMaxGroupId()
+            if group_id:
+                group_id += 1
+            else:
+                group_id = 1
 
         query = queryInsertArticlesComparison(group_id, analog_article_id, catalogue_name)
 
@@ -390,7 +394,7 @@ def querySelectArticleInfo(article_id, catalogue_name):
            f"WHERE article_id = {article_id} AND catalogue_name = '{catalogue_name}';"
 
 def querySelectMaxGroupNumber():
-    return "SELECT MAX(group_id) AS max_group_id FROM articles_comparison;"
+    return "SELECT DISTINCT(group_id) AS max_group_id FROM articles_comparison ORDER BY group_id DESC;"
 
 
 

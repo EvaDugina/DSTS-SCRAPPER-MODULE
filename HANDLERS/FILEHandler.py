@@ -32,7 +32,7 @@ def moveJSONToCompleated(catalogue_name, search_request):
 
 def appendToFileOutput(text, number):
     # prefix = datetime.datetime.now().strftime("%d%m%Y%H%M%S")
-    with open(f'LOGS/{number}_output.txt', 'a+') as f:
+    with open(f'LOGS/{number}_output.txt', 'a+', encoding="utf-8") as f:
         f.write(text + "\n")
 
 def appendToFileLog(text):

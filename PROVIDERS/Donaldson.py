@@ -196,7 +196,7 @@ class Donaldson(Provider.Provider):
             page = browser.new_page()
 
             index = 0
-            limit_check = 2
+            limit_check = 4
             self._article_info_json = {}
             self._article_cross_ref_json = {}
             while (len(self._article_info_json) == 0 or len(self._article_cross_ref_json) == 0) and index < limit_check:

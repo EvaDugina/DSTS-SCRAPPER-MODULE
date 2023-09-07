@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import datetime
 import json
 import threading
@@ -103,6 +105,7 @@ def doWhileNoSuccess(try_count, type_function, function, driver, article):
 
 if __name__=="__main__":
 
+    fHandl.appendToFileLog("JSONParser.py\n")
     elements = fHandl.getElementsForParse()
 
     for elem in elements:
