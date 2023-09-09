@@ -28,7 +28,7 @@ class Provider:
     def parseCrossReference(self, main_article_name, producer_name, cross_ref):
         pass
 
-    def saveJSON(self, article_url, article_name, search_request):
+    def saveJSON(self, article_url, article_name, type, search_request):
         pass
 
     def getAnalogs(self, article_url, article_id):

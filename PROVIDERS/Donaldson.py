@@ -134,7 +134,7 @@ class Donaldson(Provider.Provider):
     #                 analog_producer_id = self._dbHandler.insertProducer(analog_producer_name)
     #         elif index % 3 == 1:
     #             analog_article_name = elem.text
-    #             analog_article_id = self._dbHandler.insertArticle(analog_article_name, analog_producer_id)
+    #             analog_article_id = self._dbHandler.insertArticle(analog_article_name, analog_producer_id, self._catalogue_name)
     #             analogs.append(analog_article_id)
     #
     #     if count_analogs > 0 and count_cross_reference_elements > 0:
@@ -146,7 +146,7 @@ class Donaldson(Provider.Provider):
     def parseCrossReference(self, main_article_name, producer_name, cross_ref):
         main_producer_id = self._dbHandler.insertProducer(producer_name, self._catalogue_name)
         fHandler.appendToFileLog("----> PRODUCER_ID: " + str(main_producer_id))
-        main_article_id = self._dbHandler.insertArticle(main_article_name, main_producer_id)
+        main_article_id = self._dbHandler.insertArticle(main_article_name, main_producer_id, self._catalogue_name)
         for elem in cross_ref:
             producer_name = elem['manufactureName']
             fHandler.appendToFileLog("\t--> PRODUCER_NAME: " + str(producer_name))
@@ -154,7 +154,7 @@ class Donaldson(Provider.Provider):
             analog_article_names = elem['manufacturePartNumber']
             analog_article_ids = []
             for article_name in analog_article_names:
-                analog_article_id = self._dbHandler.insertArticle(article_name, producer_id)
+                analog_article_id = self._dbHandler.insertArticle(article_name, producer_id, self._catalogue_name)
                 analog_article_ids.append(analog_article_id)
             self._dbHandler.insertArticleAnalogs(main_article_id, analog_article_ids, self._catalogue_name)
 
@@ -184,26 +184,37 @@ class Donaldson(Provider.Provider):
         secondary_info = info_json['productSecondaryInfo']
         output_json = {**main_info, **secondary_info}
 
-        self._dbHandler.insertArticleInfo(article_id, self._catalogue_name, output_json)
+        self._dbHandler.insertCharacteristics(main_info)
+
+        type = info_json['productType']
+        url = f"{self._article_url}{article_name}/{info_json['productSecondaryInfo']['productId']}"
+
+        self._dbHandler.insertArticleInfo(article_id, self._catalogue_name, url, type, output_json)
 
 
-    def saveJSON(self, article_url, article_name, search_request):
+    def saveJSON(self, article_url, article_name, type, search_request):
 
         fHandler.appendToFileLog("saveJSON():")
 
         with sync_playwright() as p:
-            browser = p.chromium.launch()
-            page = browser.new_page()
 
+            # Получаем Cross-Ref & Characteristics & Type
             index = 0
             limit_check = 4
             self._article_info_json = {}
             self._article_cross_ref_json = {}
+            browser = p.chromium.launch()
+            page = browser.new_page()
             while (len(self._article_info_json) == 0 or len(self._article_cross_ref_json) == 0) and index < limit_check:
                 page.on("response", self.handle_response)
                 page.goto(article_url, wait_until="load")
                 index += 1
+            type_json = dict([("productType", type)])
             page.context.close()
+            browser.close()
+
+
+            # Проверяем, что нашли
             if len(self._article_info_json) == 0:
                 logging.info("\t_article_info_json is empty()")
                 self._article_info_json['productMainInfo'] = {}
@@ -213,14 +224,18 @@ class Donaldson(Provider.Provider):
                 self._article_cross_ref_json['crossReference'] = []
             # print("\tJSONs получены!")
 
+
+            # Склеиваем информацию в один JSON
             article_info_json = {**self._article_cross_ref_json, **self._article_info_json}
+            article_info_json = {**article_info_json, **type_json}
+
+
+            # Отправляем на генерацию полного JSON
             article_json = parseJSON.generateArticleJSON(article_name, "DONALDSON", "DONALDSON", article_info_json)
             # print("\tgenerateArticleJSON() -> completed")
 
             fHandler.appendJSONToFile("DONALDSON", article_json, search_request)
             fHandler.appendToFileLog("\tappendToFile() -> completed")
-
-            browser.close()
             fHandler.appendToFileLog("saveJSON() -> completed")
 
 
@@ -235,6 +250,7 @@ class Donaldson(Provider.Provider):
                 except:
                     logging.warning(traceback.format_exc())
             if "fetchProductAttrAndRecentlyViewed?" in response.url and len(self._article_info_json) == 0:
+                # print(response.json())
                 article_info_characteristic['productMainInfo'] = response.json()['productAttributesResponse']['dynamicAttributes']
                 article_info_else['productSecondaryInfo'] = response.json()['recentlyViewedProductResponse']['recentlyViewedProducts'][0]
                 self._article_info_json = {**article_info_characteristic, **article_info_else}

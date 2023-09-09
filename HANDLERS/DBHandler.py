@@ -85,7 +85,7 @@ class DBWorker:
         return cursor.fetchone()
 
     def getProducerIdByNameAndCatalogueName(self, producer_name, catalogue_name) -> int:
-        producer_name = parse.splitArticleNameBySpaces(producer_name)
+        producer_name = parse.splitProducerNameBySpaces(producer_name)
         producer = self.getProducerByName(producer_name)
         if producer == []:
             producer = self.getProducerByNameAndCatalogueName(producer_name, catalogue_name)
@@ -168,10 +168,10 @@ class DBWorker:
     # INSERTS TO DB
     #####################################################################
 
-    def insertArticle(self, article_name, producer_id) -> int:
-        article_name.upper().strip()
+    def insertArticle(self, article_line, producer_id, catalogue_name) -> int:
+        article_line.upper().strip()
 
-        article_name = parse.splitArticleNameBySpaces(article_name)
+        article_name = parse.concatArticleName(article_line)
 
         if not self.isArticleExist(article_name, producer_id):
             query = queryInsertArticle(article_name, producer_id)
@@ -185,6 +185,10 @@ class DBWorker:
         else:
             article = self.getArticleByName(article_name, producer_id)
             article_id = article[0]
+
+        # Добавляем себя в БД producers_name_variations
+        self.insertArticleNameVariation(article_id, article_line, catalogue_name)
+        self.insertArticleNameVariation(article_id, article_name, catalogue_name)
 
         return article_id
 
@@ -287,16 +291,42 @@ class DBWorker:
             fHandl.appendToFileLog(f"\t\tINSERTED PRODUCER_NAME_VARIATION: {producer_id} - {name_variation} - {catalogue_name}")
 
 
-    def insertArticleInfo(self, article_id, catalogue_name, output_json):
+    def insertArticleNameVariation(self, article_id, name_variation, catalogue_name):
+        name_variation = name_variation.upper()
+
+        if not self.hasArticleNameVariation(article_id, name_variation, catalogue_name):
+            query = queryInsertArticleNameVariation(article_id, name_variation, catalogue_name)
+
+            cursor = self.CONNECTION.cursor()
+            cursor.execute(query)
+            self.CONNECTION.commit()
+
+            fHandl.appendToFileLog(f"\t\tINSERTED ARTICLE_NAME_VARIATION: {article_id} - {name_variation} - {catalogue_name}")
+
+
+    def insertArticleInfo(self, article_id, catalogue_name, url, type, output_json):
 
         if self.getArticleInfo(article_id, catalogue_name) == []:
-            query = queryInsertArticleInfo(article_id, catalogue_name, json.dumps(output_json))
+            query = queryInsertArticleInfo(article_id, catalogue_name, url, type, json.dumps(output_json))
 
             cursor = self.CONNECTION.cursor()
             cursor.execute(query)
             self.CONNECTION.commit()
 
             fHandl.appendToFileLog(f"\t\tINSERTED ARTICLE INFO: {article_id} - {catalogue_name}")
+
+
+    def insertCharacteristics(self, charachterictics_json):
+        # print(charachterictics_json)
+        for charachterictic in charachterictics_json:
+            self.insertUniqueCharacteristic(charachterictic)
+
+    def insertUniqueCharacteristic(self, charachterictic_name):
+        query = queryInsertCharacteristic(charachterictic_name)
+
+        cursor = self.CONNECTION.cursor()
+        cursor.execute(query)
+        self.CONNECTION.commit()
 
 
     #####################################################################
@@ -334,6 +364,15 @@ class DBWorker:
         return bool(cursor.rowcount)
 
 
+    def hasArticleNameVariation(self, article_id, name_variation, catalogue_name) -> bool:
+        query = queryCheckArticleNameVariation(article_id, name_variation, catalogue_name)
+
+        cursor = self.CONNECTION.cursor()
+        cursor.execute(query)
+        self.CONNECTION.commit()
+
+        return bool(cursor.rowcount)
+
     def hasProducerNameVariation(self, producer_id, name_variation, catalogue_name) -> bool:
         query = queryCheckProducerNameVariation(producer_id, name_variation, catalogue_name)
 
@@ -342,6 +381,7 @@ class DBWorker:
         self.CONNECTION.commit()
 
         return bool(cursor.rowcount)
+
 
 
 
@@ -372,6 +412,10 @@ def querySelectProducerNameVariation(producer_name, catalogue_name):
 def queryCheckProducerNameVariation(producer_id, producer_name, catalogue_name):
     return "SELECT * FROM producers_name_variations " \
            f"WHERE producer_id = {producer_id} AND producer_name = '{producer_name}' AND catalogue_name = '{catalogue_name}';"
+
+def queryCheckArticleNameVariation(article_id, article_name, catalogue_name):
+    return "SELECT * FROM articles_name_variations " \
+           f"WHERE article_id = {article_id} AND article_name = '{article_name}' AND catalogue_name = '{catalogue_name}';"
 
 def querySelectProducerNameVarations(producer_id):
     return "SELECT * FROM producers_name_variations " \
@@ -414,10 +458,19 @@ def queryInsertProducerNameVariation(producer_id, producer_name, catalogue_name)
            + f"VALUES ({producer_id}, '{producer_name}', '{catalogue_name}') " \
              "RETURNING id;"
 
+def queryInsertArticleNameVariation(article_id, article_name, catalogue_name):
+    return "INSERT INTO public.articles_name_variations(article_id, article_name, catalogue_name) " \
+           + f"VALUES ({article_id}, '{article_name}', '{catalogue_name}') " \
+             "RETURNING id;"
+
 def queryInsertArticlesComparison(group_id, article_id, catalogue_name):
     return "INSERT INTO public.articles_comparison(group_id, article_id, catalogue_name) " \
            + f"VALUES ({group_id}, {article_id}, '{catalogue_name}');"
 
-def queryInsertArticleInfo(article_id, catalogue_name, json):
-    return "INSERT INTO public.articles_details(article_id, catalogue_name, json) " \
-           + f"VALUES ({article_id}, '{catalogue_name}', $antihype1${json}$antihype1$);"
+def queryInsertArticleInfo(article_id, catalogue_name, url, type, json):
+    return "INSERT INTO public.articles_details(article_id, catalogue_name, url, type, json) " \
+           + f"VALUES ({article_id}, '{catalogue_name}', '{url}', '{type}', $antihype1${json}$antihype1$);"
+
+def queryInsertCharacteristic(characteristic):
+    return "INSERT INTO characteristics_comparison(charachteristic_en, charachteristic_ru) " \
+           + f"VALUES ('{characteristic}', '{characteristic}') ON CONFLICT (charachteristic_en) DO NOTHING;"
