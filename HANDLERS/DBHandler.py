@@ -472,5 +472,5 @@ def queryInsertArticleInfo(article_id, catalogue_name, url, type, json):
            + f"VALUES ({article_id}, '{catalogue_name}', '{url}', '{type}', $antihype1${json}$antihype1$);"
 
 def queryInsertCharacteristic(characteristic):
-    return "INSERT INTO characteristics_comparison(charachteristic_en, charachteristic_ru) " \
-           + f"VALUES ('{characteristic}', '{characteristic}') ON CONFLICT (charachteristic_en) DO NOTHING;"
+    return "INSERT INTO characteristics_comparison(characteristic_original, characteristic_alt) " \
+           + f"VALUES ('{characteristic}', '{characteristic}') ON CONFLICT (characteristic_original) DO NOTHING;"
