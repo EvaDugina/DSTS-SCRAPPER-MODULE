@@ -41,6 +41,9 @@ class Donaldson(Provider.Provider):
     def getMainUrl(self):
         return self._main_url
 
+    def getCatalogueName(self):
+        return self._catalogue_name
+
     def getArticleFromURL(self, url):
         url_attr = url.split("/")
         if len(url_attr) < 5:
@@ -52,8 +55,9 @@ class Donaldson(Provider.Provider):
         if page_number > 0:
             # Переходим на др. страницу
             driver.get(self._catalogue_url + search_request + f'&No={20 * page_number}')
-        elif page_number <= self.max_page:
+        elif page_number == 0:
             self.max_page = self.getPageCount(driver, search_request)
+            pass
         else:
             return strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE
 
@@ -65,6 +69,7 @@ class Donaldson(Provider.Provider):
         if len(lastButton) > 0:
             try:
                 max_page = int(lastButton[0].find_elements(By.TAG_NAME, "a")[0].get_attribute("innerHTML"))
+                self.max_page = max_page
                 return max_page
             except JavascriptException or IndexError:
                 return strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE
@@ -75,17 +80,31 @@ class Donaldson(Provider.Provider):
             return True
         return False
 
+
+
     def parseSearchResult(self, driver):
-        elements = driver.find_elements(By.CLASS_NAME, "donaldson-part-details")
+        div_elements = driver.find_elements(By.CLASS_NAME, "listTile")
         articles = []
-        for index, elem in enumerate(elements, start=0):
-            if index % 2 == 0:
-                try:
-                    spans = elem.find_elements(By.TAG_NAME, "span")
-                    articles.append([spans[0].get_attribute("innerHTML"), elem.get_attribute("href")])
-                except JavascriptException or IndexError:
-                    return strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE
+        for index, div in enumerate(div_elements, start=0):
+            first_div_children = div.find_elements(By.TAG_NAME, "div")[0]
+            a_elem = first_div_children.find_elements(By.CLASS_NAME, "donaldson-part-details")[0]
+            changed_detail = a_elem.find_element(By.XPATH, "following-sibling::*[1]").find_elements(By.TAG_NAME, "span")
+            changedDetailArticleName = ""
+            # print(changed_detail.get_attribute('class'))
+            if len(changed_detail) > 0:
+                changed_detail = changed_detail[0]
+                changedDetailArticleName = changed_detail.find_elements(By.TAG_NAME, "span")[0].get_attribute("innerHTML")
+                changedDetailArticleName = changedDetailArticleName.split(" ")[1]
+            try:
+                spans = a_elem.find_elements(By.TAG_NAME, "span")
+                if changedDetailArticleName != "":
+                    articles.append([spans[0].get_attribute("innerHTML"), a_elem.get_attribute("href"), changedDetailArticleName])
+                else:
+                    articles.append([spans[0].get_attribute("innerHTML"), a_elem.get_attribute("href")])
+            except JavascriptException or IndexError:
+                return strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE
         return articles
+
 
     def loadArticlePage(self, driver, article_url, search_type=False):
         try:
@@ -154,7 +173,11 @@ class Donaldson(Provider.Provider):
             analog_article_names = elem['manufacturePartNumber']
             analog_article_ids = []
             for article_name in analog_article_names:
-                analog_article_id = self._dbHandler.insertArticle(article_name, producer_id, self._catalogue_name)
+                analog_article_id = ""
+                if "type" in elem and elem['type'] == "old":
+                    analog_article_id = self._dbHandler.insertArticle(article_name, producer_id, self._catalogue_name, 1)
+                else:
+                    analog_article_id = self._dbHandler.insertArticle(article_name, producer_id, self._catalogue_name)
                 analog_article_ids.append(analog_article_id)
             self._dbHandler.insertArticleAnalogs(main_article_id, analog_article_ids, self._catalogue_name)
 
@@ -234,9 +257,11 @@ class Donaldson(Provider.Provider):
             article_json = parseJSON.generateArticleJSON(article_name, "DONALDSON", "DONALDSON", article_info_json)
             # print("\tgenerateArticleJSON() -> completed")
 
-            fHandler.appendJSONToFile("DONALDSON", article_json, search_request)
+            # fHandler.appendJSONToFile("DONALDSON", article_json, search_request)
             fHandler.appendToFileLog("\tappendToFile() -> completed")
             fHandler.appendToFileLog("saveJSON() -> completed")
+
+            return article_json
 
 
     with sync_playwright() as p:

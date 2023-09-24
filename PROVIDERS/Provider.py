@@ -7,16 +7,24 @@ class Provider:
     def getMainUrl(self):
         pass
 
+    def getCatalogueName(self):
+        pass
+
     def getArticleFromURL(self, url):
         pass
 
     def getProducerId(self, article):
         pass
 
-    def search(self, driver, page_number, search_request):
+    def getPageCount(self, driver, search_request):
         pass
 
     def endCondision(self, page):
+        pass
+
+
+
+    def search(self, driver, page_number, search_request):
         pass
 
     def parseSearchResult(self, driver):
@@ -28,10 +36,15 @@ class Provider:
     def parseCrossReference(self, main_article_name, producer_name, cross_ref):
         pass
 
+
+
     def saveJSON(self, article_url, article_name, type, search_request):
         pass
 
     def getAnalogs(self, article_url, article_id):
+        pass
+
+    def setInfo(self, article_name, producer_name, info_json):
         pass
 
     def goBack(self, driver):

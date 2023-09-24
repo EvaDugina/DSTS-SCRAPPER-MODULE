@@ -168,13 +168,16 @@ class DBWorker:
     # INSERTS TO DB
     #####################################################################
 
-    def insertArticle(self, article_line, producer_id, catalogue_name) -> int:
+    def insertArticle(self, article_line, producer_id, catalogue_name, type=None) -> int:
         article_line.upper().strip()
 
         article_name = parse.concatArticleName(article_line)
 
         if not self.isArticleExist(article_name, producer_id):
-            query = queryInsertArticle(article_name, producer_id)
+            if type is None:
+                query = queryInsertArticle(article_name, producer_id)
+            else:
+                query = queryInsertArticleWithType(article_name, producer_id, type)
 
             cursor = self.CONNECTION.cursor()
             cursor.execute(query)
@@ -444,8 +447,13 @@ def querySelectMaxGroupNumber():
 
 
 def queryInsertArticle(article_name, producer_id):
-    return "INSERT INTO public.articles(article_name, producer_id) " \
-           + f"VALUES ('{article_name}', {producer_id}) " \
+    return "INSERT INTO public.articles(article_name, producer_id, type) " \
+           + f"VALUES ('{article_name}', {producer_id}, 0) " \
+             f"RETURNING id;"
+
+def queryInsertArticleWithType(article_name, producer_id, type):
+    return "INSERT INTO public.articles(article_name, producer_id, type) " \
+           + f"VALUES ('{article_name}', {producer_id}, {type}) " \
              f"RETURNING id;"
 
 def queryInsertProducer(producer_name):
@@ -465,7 +473,7 @@ def queryInsertArticleNameVariation(article_id, article_name, catalogue_name):
 
 def queryInsertArticlesComparison(group_id, article_id, catalogue_name):
     return "INSERT INTO public.articles_comparison(group_id, article_id, catalogue_name) " \
-           + f"VALUES ({group_id}, {article_id}, '{catalogue_name}');"
+           + f"VALUES ({group_id}, {article_id}, '{catalogue_name}') ON CONFLICT (article_id) DO NOTHING;"
 
 def queryInsertArticleInfo(article_id, catalogue_name, url, type, json):
     return "INSERT INTO public.articles_details(article_id, catalogue_name, url, type, json) " \

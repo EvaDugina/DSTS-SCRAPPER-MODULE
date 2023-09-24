@@ -110,7 +110,7 @@ def getCountCompleatedOUTPUTFiles():
 def getSearchRequests():
     search_requests = []
     for line in open(f'SEARCH_REQUESTS.txt'):
-        if line.rstrip() == "____":
+        if line.rstrip() == "----" or line.rstrip() == "____":
             break
         search_requests.append(line.rstrip().split(" "))
     return search_requests

@@ -21,51 +21,27 @@ def parseCrossRefDonaldsonJSON(start_index, end_index, json_string, article_id, 
     fHandl.appendToFileLog(f'T{number_thread}: END PARSING!')
 
 
-def parseCrossRef(json_string, article_id, dbHandler):
-
-    # init events
-    e1 = threading.Event()
-    e2 = threading.Event()
-    e3 = threading.Event()
-    e4 = threading.Event()
-
-    start_index_e2 = len(json_string['crossReferenceList']) // 4
-    start_index_e3 = len(json_string['crossReferenceList']) // 2
-    start_index_e4 = len(json_string['crossReferenceList']) // 4 * 3
-
-    # init threads
-    t1 = threading.Thread(target=parseCrossRefDonaldsonJSON,
-                          args=(0, start_index_e3, json_string, article_id, 1, dbHandler))
-    t2 = threading.Thread(target=parseCrossRefDonaldsonJSON,
-                          args=(start_index_e3, len(json_string['crossReferenceList'])-1, json_string, article_id, 2, dbHandler))
-
-    # t2 = threading.Thread(target=parseCrossRefDonaldsonJSON, args=(start_index_e2, start_index_e3, json_string, article_id, 2))
-    # t3 = threading.Thread(target=parseCrossRefDonaldsonJSON, args=(start_index_e3, start_index_e4, json_string, article_id, 3))
-    # t4 = threading.Thread(target=parseCrossRefDonaldsonJSON, args=(start_index_e4, len(json_string['crossReferenceList']) - 1, json_string, article_id, 4))
-
-    # start threads
-    t1.start()
-    t2.start()
-    # t3.start()
-    # t4.start()
-
-    # e1.set()  # initiate the first event
-
-    # join threads to the main thread
-    t1.join()
-    t2.join()
-    # t3.join()
-    # t4.join()
-
 def generateArticleJSON(article_name, producer_name, catalogue_name, article_info_json):
     article_json = json.dumps({'name': article_name, 'catalogue_name': catalogue_name, 'producer_name': producer_name,
                                'info': article_info_json})
     # print(article_json)
     return article_json
 
+def generateItemCrossRefJSON(producer_name, article_id):
+    item_cross_ref = {
+        "manufactureName": f"{producer_name}",
+        "manufacturePartNumber": [f"{article_id}"],
+        "manufactureNameSortableValue": f"{producer_name}",
+        "notes": ["", ""],
+        "type": "old"
+    }
+    return item_cross_ref
+
+def appendOldAnalogToJSON(article_json, new_article_name, producer_name):
+    article_json = json.loads(article_json)
+    article_json['info']['crossReference'].append(generateItemCrossRefJSON(producer_name, new_article_name))
+    article_json = json.dumps(article_json)
+    return article_json
 
 def convertSTRtoJSON(str):
     return json.dumps(str)
-
-
-

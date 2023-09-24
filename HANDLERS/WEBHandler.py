@@ -12,7 +12,7 @@ except ImportError:
     from bs4 import BeautifulSoup
 
 from PROVIDERS import Donaldson as Donaldson, FilFilter as FilFilter
-from HANDLERS import FILEHandler as fHandler, DBHandler as db
+from HANDLERS import FILEHandler as fHandler, DBHandler as db, JSONHandler
 from UTILS import strings
 
 
@@ -128,7 +128,10 @@ def getLINKSbyPage(pages):
             fHandler.appendToFileLog(f"T{page}: parseSearchResult() -> completed")
 
             for article in articles:
-                fHandler.appendLINKtoFile(_catalogue_name, article[0] + " " + article[1], _search_request)
+                if len(article) == 3:
+                    fHandler.appendLINKtoFile(_catalogue_name, article[0] + " " + article[1] + " " + article[2], _search_request)
+                else:
+                    fHandler.appendLINKtoFile(_catalogue_name, article[0] + " " + article[1], _search_request)
             fHandler.appendToFileLog(f"T{page}: appendLINKtoFile() -> completed")
 
             fHandler.appendToFileLog(f'PAGE №{page} -> completed')
@@ -170,10 +173,10 @@ class WebWorker:
         # elif site_name == "FLEETGUARD":
         #     producer_id = dbHandler.insertProducer(site_name)
         #     provider = fl.Fleetguard(producer_id)
-        elif self._catalogue_name == "FIL-FILTER":
+        elif self._catalogue_name == "FILFILTER":
             fHandler.appendToFileLog("ПО САЙТУ-ПРОИЗВОДИТЕЛЮ: FIL-FILTER")
             producer_id = self._dbHandler.insertProducer(self._catalogue_name, self._catalogue_name)
-            provider = ff.FilFilter(producer_id, self._dbHandler)
+            provider = FilFilter.FilFilter(producer_id, self._dbHandler)
 
         else:
             fHandler.appendToFileLog("#### ОШИБКА! Выбран некорректный сайт производителя: " + str(self._catalogue_name))
@@ -261,7 +264,12 @@ class WebWorker:
                 if driver == strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE:
                     return strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE
                 fHandler.appendToFileLog("loadArticlePage() -> completed")
-                provider.saveJSON(article[1], article[0], type, self._search_request)
+
+                article_json = provider.saveJSON(article[1], article[0], type, self._search_request)
+                if len(article) == 3:
+                    article_json = JSONHandler.appendOldAnalogToJSON(article_json, article[2], provider.getCatalogueName())
+
+                fHandler.appendJSONToFile("DONALDSON", article_json, self._search_request)
 
                 fHandler.appendToFileLog("\n")
 

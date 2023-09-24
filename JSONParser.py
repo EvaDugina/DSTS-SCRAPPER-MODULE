@@ -115,11 +115,13 @@ if __name__=="__main__":
         fHandl.appendToFileLog("+++++++")
         fHandl.appendToFileLog("CATALOGUE_NAME: " + catalogue_name)
         fHandl.appendToFileLog("SEARCH_REQUEST: " + search_request)
-        fHandl.appendToFileLog("parseJSONSbyThreads() -> start!")
+        fHandl.appendToFileLog("parseJSONSbyThreads() -> start!")\
+
         # Парсим JSONS
         start_time_parsing_jsons = datetime.datetime.now()
         parseJSONSbyThreads(catalogue_name, search_request)
         end_time_parsing_jsons = datetime.datetime.now()
+
         fHandl.appendToFileLog("parseJSONSbyThreads() -> completed! ВРЕМЯ: " +
               str(int((end_time_parsing_jsons - start_time_parsing_jsons).total_seconds())) + " сек.")
         fHandl.appendToFileLog("+++++++")
