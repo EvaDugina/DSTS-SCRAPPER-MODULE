@@ -26,12 +26,13 @@ def parseJSONS(start_line, end_line):
         article_name = line_json['name']
         catalogue_name = line_json['catalogue_name']
         producer_name = line_json['producer_name']
+        type = line_json['type']
 
         cross_ref = line_json['info']['crossReference']
 
         start_time_parsing_jsons = datetime.datetime.now()
         provider = wHandl.getProviderAndProducerId(catalogue_name, _dbHandler)
-        provider.parseCrossReference(article_name, producer_name, cross_ref)
+        provider.parseCrossReference(article_name, producer_name, type, cross_ref)
         provider.setInfo(article_name, producer_name, line_json['info'])
         end_time_parsing_jsons = datetime.datetime.now()
         fHandl.appendToFileLog("parseCrossReference() -> completed! ВРЕМЯ: " +

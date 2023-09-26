@@ -189,9 +189,12 @@ class DBWorker:
             article = self.getArticleByName(article_name, producer_id)
             article_id = article[0]
 
-        # Добавляем себя в БД producers_name_variations
+        # Добавляем себя в producers_name_variations
         self.insertArticleNameVariation(article_id, article_line, catalogue_name)
         self.insertArticleNameVariation(article_id, article_name, catalogue_name)
+
+        # Добавляем себя в articles_comparison
+        # self.insertArticleAnalog(article_id, article_id, catalogue_name)
 
         return article_id
 
@@ -271,14 +274,20 @@ class DBWorker:
 
         query = ""
         for analog_article_id in analog_article_ids:
-            if not self.isAnalogInComparisonTable(article_id, analog_article_id, catalogue_name):
-                query += queryInsertArticlesComparison(group_id, analog_article_id, catalogue_name)
-                fHandl.appendToFileLog(f"\t\t\tINSERTED ANALOGS: {article_id} {analog_article_id}")
+            # if not self.isAnalogInComparisonTable(article_id, analog_article_id, catalogue_name):
+            query += queryInsertArticlesComparison(group_id, analog_article_id, catalogue_name)
+            fHandl.appendToFileLog(f"\t\t\tINSERTED ANALOGS: {article_id} {analog_article_id}")
 
         if query != "":
             cursor = self.CONNECTION.cursor()
             cursor.execute(query)
             self.CONNECTION.commit()
+
+        # Убираем повторяющиеся строки
+        query = queryDeleteSimmilarArticlesComparison(group_id)
+        cursor = self.CONNECTION.cursor()
+        cursor.execute(query)
+        self.CONNECTION.commit()
 
 
     def insertProducerNameVariation(self, producer_id, name_variation, catalogue_name):
@@ -401,12 +410,14 @@ def querySelectArticle(article_id):
            f'WHERE id = {article_id};'
 
 def querySelectArticleByNameAndProducerId(article_name, producer_id):
-    return "SELECT * FROM articles " \
-           f"WHERE article_name = '{article_name}' AND producer_id = {producer_id};"
+    return "SELECT DISTINCT articles.*, articles_name_variations.article_name AS article_name_variation FROM articles " \
+           "INNER JOIN articles_name_variations ON articles_name_variations.article_id = articles.id " \
+           f"WHERE articles_name_variations.article_name = '{article_name}' AND articles.producer_id = {producer_id};"
 
 def querySelectProducerByName(producer_name):
-    return "SELECT * FROM producers " \
-           f"WHERE producer_name = '{producer_name}';"
+    return "SELECT DISTINCT producers.*, producers_name_variations.producer_name AS producer_name_variation FROM producers " \
+           "INNER JOIN producers_name_variations ON producers_name_variations.producer_id = producers.id " \
+           f"WHERE producers_name_variations.producer_name = '{producer_name}';"
 
 def querySelectProducerNameVariation(producer_name, catalogue_name):
     return "SELECT * FROM producers_name_variations " \
@@ -445,7 +456,6 @@ def querySelectMaxGroupNumber():
 
 
 
-
 def queryInsertArticle(article_name, producer_id):
     return "INSERT INTO public.articles(article_name, producer_id, type) " \
            + f"VALUES ('{article_name}', {producer_id}, 0) " \
@@ -473,7 +483,7 @@ def queryInsertArticleNameVariation(article_id, article_name, catalogue_name):
 
 def queryInsertArticlesComparison(group_id, article_id, catalogue_name):
     return "INSERT INTO public.articles_comparison(group_id, article_id, catalogue_name) " \
-           + f"VALUES ({group_id}, {article_id}, '{catalogue_name}') ON CONFLICT (article_id) DO NOTHING;"
+           + f"VALUES ({group_id}, {article_id}, '{catalogue_name}');"
 
 def queryInsertArticleInfo(article_id, catalogue_name, url, type, json):
     return "INSERT INTO public.articles_details(article_id, catalogue_name, url, type, json) " \
@@ -482,3 +492,12 @@ def queryInsertArticleInfo(article_id, catalogue_name, url, type, json):
 def queryInsertCharacteristic(characteristic):
     return "INSERT INTO characteristics_comparison(characteristic_original, characteristic_alt) " \
            + f"VALUES ('{characteristic}', '{characteristic}') ON CONFLICT (characteristic_original) DO NOTHING;"
+
+
+
+
+def queryDeleteSimmilarArticlesComparison(group_id):
+    return "DELETE FROM articles_comparison AS a " \
+           "USING articles_comparison as b " \
+           f"WHERE a.id > b.id AND a.group_id = {group_id}" \
+           "AND a.group_id = b.group_id AND a.article_id = b.article_id AND a.catalogue_name = b.catalogue_name;"

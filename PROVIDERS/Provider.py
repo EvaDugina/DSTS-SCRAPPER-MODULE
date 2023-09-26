@@ -27,19 +27,25 @@ class Provider:
     def search(self, driver, page_number, search_request):
         pass
 
-    def parseSearchResult(self, driver):
+    def parseSearchResult(self, driver, pageNumber):
         pass
 
-    def loadArticlePage(self, driver, article, search_type):
+    def loadArticlePage(self, driver, article_url, search_type):
         pass
 
-    def parseCrossReference(self, main_article_name, producer_name, cross_ref):
+    def getArticleType(self, driver) -> str:
+        pass
+
+    def parseCrossReference(self, main_article_name, producer_name, type, cross_ref):
         pass
 
 
 
-    def saveJSON(self, article_url, article_name, type, search_request):
+    def saveJSON(self, driver, article_url, article_name, type, search_request, article):
         pass
+
+    def addAnalogToJSON(self, article, json):
+       pass
 
     def getAnalogs(self, article_url, article_id):
         pass

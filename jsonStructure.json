@@ -1,0 +1,28 @@
+{
+  "name": "ZP507D",
+  "catalogue_name": "FILFILTER",
+  "producer_name": "FILFILTER",
+  "type": "",
+  "info": {
+    "crossReference": [
+      {
+        "producerName": "хлъ опнхгбндхрекъ",
+        "articleNames": [
+          "юпрхйск рнбюпю ╧1",
+          "юпрхйск рнбюпю ╧2"
+        ],
+        "type": "real - ЮЙРСЮКЭМШИ, old - СЯРЮПЕБЬХИ"
+      },
+      ...
+    ],
+    "articleMainInfo": {
+      ...
+    },
+    "articleSecondaryInfo": {
+      "articleId": "",
+      "imageUrl": "",
+      "fullId": ""
+    },
+    "articleDescription": "люякъмши тхкэрп, мюбхмвхбюелши, набндмни"
+  }
+}

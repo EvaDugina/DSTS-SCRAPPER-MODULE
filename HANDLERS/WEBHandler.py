@@ -30,7 +30,7 @@ def getProviderAndProducerId(catalogue_name, dbHandler):
     # elif site_name == "FLEETGUARD":
     #     producer_id = dbHandler.insertProducer(site_name)
     #     provider = fl.Fleetguard(producer_id)
-    elif catalogue_name == "FIL-FILTER":
+    elif catalogue_name == "FILFILTER":
         fHandler.appendToFileLog("ПО САЙТУ-ПРОИЗВОДИТЕЛЮ: FIL-FILTER")
         producer_id = dbHandler.insertProducer(catalogue_name, catalogue_name)
         provider = FilFilter.FilFilter(producer_id, dbHandler)
@@ -122,13 +122,15 @@ def getLINKSbyPage(pages):
                 return strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE
             fHandler.appendToFileLog(f"T{page}: search() -> completed")
 
-            articles = _provider.parseSearchResult(driver)
+            articles = _provider.parseSearchResult(driver, page)
             if articles == strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE:
                 return strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE
             fHandler.appendToFileLog(f"T{page}: parseSearchResult() -> completed")
 
             for article in articles:
-                if len(article) == 3:
+                if len(article) == 4:
+                    fHandler.appendLINKtoFile(_catalogue_name, article[0] + " " + article[1] + " " + article[2] + " " + article[3], _search_request)
+                elif len(article) == 3:
                     fHandler.appendLINKtoFile(_catalogue_name, article[0] + " " + article[1] + " " + article[2], _search_request)
                 else:
                     fHandler.appendLINKtoFile(_catalogue_name, article[0] + " " + article[1], _search_request)
@@ -246,7 +248,7 @@ class WebWorker:
                 fHandler.appendToFileLog("#### ОШИБКА! Не найден браузер")
                 return strings.UNDEFIND_BROWSER
 
-            articles = fHandler.getLINKSfromFileByLines("DONALDSON", self._search_request, start_line, end_line)
+            articles = fHandler.getLINKSfromFileByLines(self._provider.getCatalogueName(), self._search_request, start_line, end_line)
             fHandler.appendToFileLog("\n")
 
             for article in articles:
@@ -257,19 +259,23 @@ class WebWorker:
 
                 driver = provider.loadArticlePage(driver, article[1])
 
-                parsed_html = BeautifulSoup(driver.page_source.encode('utf-8'), "html.parser")
-                type = parsed_html.body.find('div', attrs={'class': 'prodSubTitleMob'}).text
+                type = provider.getArticleType(driver)
                 if not driver:
                     return "НЕ УДАЛОСЬ ЗАГРУЗИТЬ СТРАНИЦУ АРТИКУЛА"
                 if driver == strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE:
                     return strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE
                 fHandler.appendToFileLog("loadArticlePage() -> completed")
 
-                article_json = provider.saveJSON(article[1], article[0], type, self._search_request)
-                if len(article) == 3:
-                    article_json = JSONHandler.appendOldAnalogToJSON(article_json, article[2], provider.getCatalogueName())
 
-                fHandler.appendJSONToFile("DONALDSON", article_json, self._search_request)
+                article_json = provider.saveJSON(driver, article[1], article[0], type, self._search_request, article)
+                # print(article_json)
+
+
+                # if len(article) == 3 and self._catalogue_name == "DONALDSON":
+                #     article_json = JSONHandler.appendOldAnalogToJSON(article_json, article[2], provider.getCatalogueName())
+                # if len(article) == 4 and self._catalogue_name == "FILFILTER":
+                #     article_json = JSONHandler.appendAnalogToJSON(article_json, article[2], article[3])
+                fHandler.appendJSONToFile(provider.getCatalogueName(), article_json, self._search_request)
 
                 fHandler.appendToFileLog("\n")
 
