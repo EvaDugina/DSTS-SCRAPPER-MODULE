@@ -40,11 +40,11 @@ class FilFilter(Provider.Provider):
     def getCatalogueName(self):
         return self._catalogue_name
 
-    def getArticleFromURL(self, url):
-        url_attr = url.split("/")
-        if len(url_attr) < 4:
-            return False
-        return [url_attr[5], url]
+    # def getArticleFromURL(self, url):
+    #     url_attr = url.split("/")
+    #     if len(url_attr) < 4:
+    #         return False
+    #     return [url_attr[5], url]
 
     def getProducerId(self, article):
         return self._dbHandler.insertProducer(article[3])
@@ -149,36 +149,10 @@ class FilFilter(Provider.Provider):
                 else:
                     articles.append([elem['product']['SearchArtNo'], link])
 
-        # Старая версия с прокликиваниями
-        # trs = driver.find_elements(By.TAG_NAME, "tr")
-        # trs.pop(0)
-        # articles = []
-        # for index, elem in enumerate(trs, start=0):
-        #     try:
-        #         tds = elem.find_elements(By.TAG_NAME, "td")
-        #         articles.append([tds[0].get_attribute("innerHTML"), tds[2].get_attribute("innerHTML"),
-        #                          index, tds[1].get_attribute("innerHTML")])
-        #     except JavascriptException or IndexError:
-        #         return strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE
         return articles
 
     # Загрузка страницы товара
     def loadArticlePage(self, driver, article_url, search_type=False):
-        # Старое с прокликиванием
-        # if search_type:
-        #     try:
-        #         driver.get(article[1])
-        #     except WebDriverException:
-        #         return False
-        #     return driver
-        #
-        # executing_return = \
-        #     driver.execute_script("let trs = document.getElementsByTagName(\"tr\");"
-        #                           f"let tr = trs[{str(article[2]+1)}];"
-        #                           f"tr.children[tr.children.length-1].children[0].classList.add(\"button-link-{str(article[2])}\");"
-        #                           "document.getElementsByClassName(\"button-link-"+str(article[2])+"\")[0].click();"
-        #                           "return 1;")
-        # wait_until(int(executing_return), 2)
 
         try:
             driver.get(article_url)
@@ -189,85 +163,6 @@ class FilFilter(Provider.Provider):
 
     def getArticleType(self, driver) -> str:
         return ""
-
-    # Парсинг элементов кросс-референса, вытаскиваемых вручную
-    # def parseCrossReference(self, driver, article, timeout=1):
-    #     article_id = article[0]
-    #
-    #     fil_filter_article_id = self._dbHandler.insertArticle(article[1], self._dbHandler.getArticle(article_id)[2])
-    #
-    #     # print("parseCrossReference")
-    #     # try:
-    #     executing_return = \
-    #         driver.execute_script("let buttons = document.getElementsByClassName(\"md-center-tabs\")[1];"
-    #                               f"buttons.children[1].classList.add(\"IAmFromRussia\");"
-    #                               "document.getElementsByClassName(\"IAmFromRussia\")[0].click();"
-    #                               f"return 1;")
-    #     wait_until(int(executing_return), timeout*2)
-    #     # except JavascriptException:
-    #     #     return strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE
-    #
-    #
-    #     # try:
-    #     text_maxPages = driver.find_elements(By.CLASS_NAME, "buttons")[0].find_elements(By.TAG_NAME, "div")[0]\
-    #         .get_attribute("innerHTML")
-    #     max_page = int(text_maxPages.split(" ")[2])
-    #
-    #     count_cross_reference_elements = int(text_maxPages.split(" ")[4])
-    #     fHandler.appendToFileLog("НАЙДЕНО ЭЛЕМЕНТОВ КРОСС-РЕФЕРЕНСА:" + str(count_cross_reference_elements))
-    #     # except IndexError:
-    #     #     return strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE
-    #
-    #     count_pages = 1
-    #     count_analogs = 0
-    #
-    #     while count_pages <= max_page:
-    #
-    #         try:
-    #             div = driver.find_elements(By.CLASS_NAME, "md-body")[0]
-    #             elements = div.find_elements(By.TAG_NAME, "tr")
-    #         except IndexError:
-    #             return strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE
-    #
-    #         analog_producer_name = ""
-    #         analog_producer_id = -1
-    #         analogs = [fil_filter_article_id]
-    #
-    #         for index, elem in enumerate(elements, start=0):
-    #
-    #             try:
-    #                 now_analog_producer_name = elem.find_elements(By.TAG_NAME, "td")[0].get_attribute("innerHTML")
-    #                 now_analog_article_name = elem.find_elements(By.TAG_NAME, "td")[1].get_attribute("innerHTML")
-    #             except JavascriptException or IndexError:
-    #                 return strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE
-    #
-    #             if now_analog_producer_name != analog_producer_name:
-    #                 analog_producer_id = self._dbHandler.insertProducer(now_analog_producer_name)
-    #                 if len(analogs) > 0:
-    #                     self._dbHandler.insertArticleAnalogs(article_id, analogs)
-    #                     count_analogs += len(analogs)
-    #                     analogs = []
-    #                 analog_producer_name = now_analog_producer_name
-    #             else:
-    #                 analog_article_id = self._dbHandler.insertArticle(now_analog_article_name, analog_producer_id)
-    #                 analogs.append(analog_article_id)
-    #
-    #         # try:
-    #         executing_return = \
-    #             driver.execute_script("let buttons = document.getElementsByClassName(\"buttons\")[0];"
-    #                                   f"buttons.children[2].classList.add(\"IAmFromRussia2\");"
-    #                                   "document.getElementsByClassName(\"IAmFromRussia2\")[0].click();"
-    #                                   f"return 1;")
-    #         wait_until(int(executing_return), timeout)
-    #         # except JavascriptException:
-    #         #     return strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE
-    #
-    #         count_pages += 1
-    #
-    #     if count_analogs > 0 and count_cross_reference_elements > 0:
-    #         return "SUCCESS"
-    #
-    #     return "НЕ ВЫЯВЛЕН НИ ОДИН АНАЛОГ!"
 
     def parseCrossReference(self, main_article_name, producer_name, type, cross_ref):
         main_producer_id = self._dbHandler.insertProducer(producer_name, self._catalogue_name)
@@ -316,20 +211,6 @@ class FilFilter(Provider.Provider):
 
             index += 1
 
-        # main_producer_id = self._dbHandler.insertProducer(producer_name, self._catalogue_name)
-        # fHandler.appendToFileLog("----> PRODUCER_ID: " + str(main_producer_id))
-        # main_article_id = self._dbHandler.insertArticle(main_article_name, main_producer_id, self._catalogue_name)
-        # for elem in cross_ref:
-        #     producer_name = elem['producerName']
-        #     fHandler.appendToFileLog("\t--> PRODUCER_NAME: " + str(producer_name))
-        #     producer_id = self._dbHandler.insertProducer(producer_name, self._catalogue_name)
-        #     analog_article_names = elem['articleNames']
-        #     analog_article_ids = []
-        #     for article_name in analog_article_names:
-        #         analog_article_id = self._dbHandler.insertArticle(article_name, producer_id, self._catalogue_name)
-        #         analog_article_ids.append(analog_article_id)
-        #     self._dbHandler.insertArticleAnalogs(main_article_id, analog_article_ids, self._catalogue_name)
-
     def getAnalogs(self, article_url, article_id):
         pass
 
@@ -360,16 +241,17 @@ class FilFilter(Provider.Provider):
 
             flag_changed = False
             type = "real"
-            if len(self._article_cross_ref_json) == 0:
-                if len(driver.find_elements(By.CLASS_NAME, "product-link")) > 0:
-                    changed_article_name = driver.find_elements(By.CLASS_NAME, "product-link")[0].get_attribute(
-                        "innerHTML")
-                    flag_changed = True
+            changed_article_names = []
+            if len(driver.find_elements(By.CLASS_NAME, "product-link")) > 0:
+                changed_article_names.append(driver.find_elements(By.CLASS_NAME, "product-link")[0].get_attribute(
+                    "innerHTML"))
+                flag_changed = True
+                if len(self._article_cross_ref_json) == 0:
                     type = "old"
-                elif driver.find_elements(By.CLASS_NAME, "flex-40")[
-                    len(driver.find_elements(By.CLASS_NAME, "flex-40")) - 1] \
-                        .get_attribute("innerHTML") == "не поставляется":
-                    type = "old"
+            elif driver.find_elements(By.CLASS_NAME, "flex-40")[
+                len(driver.find_elements(By.CLASS_NAME, "flex-40")) - 1] \
+                    .get_attribute("innerHTML") == "не поставляется":
+                type = "old"
 
             # Получаем характеристики
             self._article_info_json['articleMainInfo'] = {}
@@ -432,7 +314,7 @@ class FilFilter(Provider.Provider):
             article_json = self.addAnalogToJSON(article, article_json)
 
             if flag_changed:
-                article_json = JSONHandler.appendAnalogToJSON(article_json, changed_article_name, self._catalogue_name)
+                article_json = JSONHandler.appendAnalogsToJSON(article_json, changed_article_names, self._catalogue_name)
 
             # print("\tgenerateArticleJSON() -> completed")
 
