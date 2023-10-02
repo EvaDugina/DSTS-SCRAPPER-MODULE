@@ -11,15 +11,17 @@ try:
 except ImportError:
     from bs4 import BeautifulSoup
 
-from PROVIDERS import Donaldson as Donaldson, FilFilter as FilFilter
+from PROVIDERS import Donaldson as Donaldson, FilFilter as FilFilter, HiFi as HiFi
 from HANDLERS import FILEHandler as fHandler, DBHandler as db, JSONHandler
 from UTILS import strings
 
+_THREADS_LIMIT = 4
 
 _provider = None
 _search_request = ""
 _catalogue_name = ""
-_THREADS_LIMIT = 4
+_thread_results = []
+
 
 
 def getProviderAndProducerId(catalogue_name, dbHandler):
@@ -34,6 +36,10 @@ def getProviderAndProducerId(catalogue_name, dbHandler):
         fHandler.appendToFileLog("ПО САЙТУ-ПРОИЗВОДИТЕЛЮ: FIL-FILTER")
         producer_id = dbHandler.insertProducer(catalogue_name, catalogue_name)
         provider = FilFilter.FilFilter(producer_id, dbHandler)
+    elif catalogue_name == "HIFI":
+        fHandler.appendToFileLog("ПО САЙТУ-ПРОИЗВОДИТЕЛЮ: HIFI-FILTER")
+        producer_id = dbHandler.insertProducer(catalogue_name, catalogue_name)
+        provider = HiFi.HiFi(producer_id, dbHandler)
 
     else:
         fHandler.appendToFileLog("#### ОШИБКА! Выбран некорректный сайт производителя: " + str(catalogue_name))
@@ -105,48 +111,48 @@ def getCountThreads(count_elements):
         return count_elements
 
 
-def getLINKSbyPage(pages):
+def getLINKSbyPage(thread_id, pages):
     global _provider, _search_request, _catalogue_name
 
-    try:
-        # ПОИСК БРАУЗЕРА ДЛЯ ИСПОЛЬЗОВАНИЯ
-        driver = getBrowser()
-        if driver is None:
-            fHandler.appendToFileLog("#### ОШИБКА! Не найден браузер")
-            return strings.UNDEFIND_BROWSER
+    # ПОИСК БРАУЗЕРА ДЛЯ ИСПОЛЬЗОВАНИЯ
+    driver = getBrowser()
+    if driver is None:
+        fHandler.appendToFileLog("#### ОШИБКА! Не найден браузер")
+        return strings.UNDEFIND_BROWSER
 
-        for page in pages:
+    for page in pages:
 
-            driver = _provider.search(driver, page, _search_request)
-            if driver == strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE:
-                return strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE
-            fHandler.appendToFileLog(f"T{page}: search() -> completed")
+        driver = _provider.search(driver, page, _search_request)
+        if driver == strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE:
+            return strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE
+        fHandler.appendToFileLog(f"T{page}: search() -> completed")
 
-            articles = _provider.parseSearchResult(driver, page)
-            if articles == strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE:
-                return strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE
-            fHandler.appendToFileLog(f"T{page}: parseSearchResult() -> completed")
+        articles = _provider.parseSearchResult(driver, page)
+        if len(articles) < 1:
+            fHandler.appendLINKtoFile(_catalogue_name, "", _search_request)
+            return "ОТСУТСВУЮТ РЕЗУЛЬТАТЫ ПОИСКА"
 
-            for article in articles:
-                if len(article) == 4:
-                    fHandler.appendLINKtoFile(_catalogue_name, article[0] + " " + article[1] + " " + article[2] + " " + article[3], _search_request)
-                elif len(article) == 3:
-                    fHandler.appendLINKtoFile(_catalogue_name, article[0] + " " + article[1] + " " + article[2], _search_request)
-                else:
-                    fHandler.appendLINKtoFile(_catalogue_name, article[0] + " " + article[1], _search_request)
-            fHandler.appendToFileLog(f"T{page}: appendLINKtoFile() -> completed")
+        for article in articles:
+            _thread_results[thread_id].append(article[0])
+            print(f"{article[0]} - найден!")
 
-            fHandler.appendToFileLog(f'PAGE №{page} -> completed')
-            fHandler.appendToFileLog("\n")
+            if len(article) == 4:
+                fHandler.appendLINKtoFile(_catalogue_name, article[0] + " " + article[1] + " " + article[2] + " " + article[3], _search_request)
+            elif len(article) == 3:
+                fHandler.appendLINKtoFile(_catalogue_name, article[0] + " " + article[1] + " " + article[2], _search_request)
+            else:
+                fHandler.appendLINKtoFile(_catalogue_name, article[0] + " " + article[1], _search_request)
+        fHandler.appendToFileLog(f"T{page}: appendLINKtoFile() -> completed")
 
-    except Exception as ex:
-        fHandler.appendToFileLog(ex)
+        fHandler.appendToFileLog(f'PAGE №{page} -> completed')
+        fHandler.appendToFileLog("\n")
 
-    finally:
-        driver.close()
-        driver.quit()
+    # AttributeError: 'NoneType' object has no attribute 'close'
+    # Exception in thread Thread-9 (getLINKSbyPage):
+    driver.close()
+    driver.quit()
 
-        return "ССЫЛКИ ВЫТАЩЕНЫ УСПЕШНО!"
+    return "ССЫЛКИ ВЫТАЩЕНЫ УСПЕШНО!"
 
 
 class WebWorker:
@@ -179,6 +185,10 @@ class WebWorker:
             fHandler.appendToFileLog("ПО САЙТУ-ПРОИЗВОДИТЕЛЮ: FIL-FILTER")
             producer_id = self._dbHandler.insertProducer(self._catalogue_name, self._catalogue_name)
             provider = FilFilter.FilFilter(producer_id, self._dbHandler)
+        elif self._catalogue_name == "HIFI":
+            fHandler.appendToFileLog("ПО САЙТУ-ПРОИЗВОДИТЕЛЮ: HIFI-FILTER")
+            producer_id = self._dbHandler.insertProducer(self._catalogue_name, self._catalogue_name)
+            provider = HiFi.HiFi(producer_id, self._dbHandler)
 
         else:
             fHandler.appendToFileLog("#### ОШИБКА! Выбран некорректный сайт производителя: " + str(self._catalogue_name))
@@ -230,6 +240,8 @@ class WebWorker:
               str(int((end_time_generating_jsons - start_time_generating_jsons).total_seconds())) + " сек.")
         fHandler.appendToFileLog("\n")
 
+        # print("END1!")
+
         end_time = datetime.datetime.now()
         fHandler.appendToFileLog("<---- END pullCrossRefToDB(): " + str(int((end_time-start_time).total_seconds())) + " сек.\n\n")
 
@@ -258,7 +270,6 @@ class WebWorker:
                 # PARSE PAGE
 
                 driver = provider.loadArticlePage(driver, article[1])
-
                 type = provider.getArticleType(driver)
                 if not driver:
                     return "НЕ УДАЛОСЬ ЗАГРУЗИТЬ СТРАНИЦУ АРТИКУЛА"
@@ -276,6 +287,7 @@ class WebWorker:
                 # if len(article) == 4 and self._catalogue_name == "FILFILTER":
                 #     article_json = JSONHandler.appendAnalogToJSON(article_json, article[2], article[3])
                 fHandler.appendJSONToFile(provider.getCatalogueName(), article_json, self._search_request)
+                print(f'{article[0]} -- взят JSON!')
 
                 fHandler.appendToFileLog("\n")
 
@@ -333,7 +345,10 @@ class WebWorker:
         setGlobalCatalogueName(self._catalogue_name)
 
         # Определяем количество потоков
-        count_threads = getCountThreads(max_page)
+        if max_page != 0:
+            count_threads = getCountThreads(max_page)
+        else:
+            return ""
 
         pages = []
         for j in range(0, count_threads):
@@ -351,7 +366,8 @@ class WebWorker:
         # Запускаем потоки
         tasks = []
         for i in range(0, count_threads):
-            tasks.append(threading.Thread(target=getLINKSbyPage, args=(pages[i],)))
+            _thread_results.append(list())
+            tasks.append(threading.Thread(target=getLINKSbyPage, args=(i, pages[i],)))
         for index, process in enumerate(tasks):
             process.start()
             fHandler.appendToFileLog(f"T{index} START!")

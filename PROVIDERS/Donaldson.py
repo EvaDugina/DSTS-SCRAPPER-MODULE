@@ -6,7 +6,7 @@ import traceback
 from bs4 import BeautifulSoup
 from selenium.common import WebDriverException, JavascriptException
 from selenium.webdriver.common.by import By
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
 
 from PROVIDERS import Provider
 from HANDLERS import FILEHandler as fHandler, JSONHandler as parseJSON, JSONHandler
@@ -47,11 +47,11 @@ class Donaldson(Provider.Provider):
     def getCatalogueName(self):
         return self._catalogue_name
 
-    def getArticleFromURL(self, url):
-        url_attr = url.split("/")
-        if len(url_attr) < 5:
-            return False
-        return [url_attr[6], url]
+    # def getArticleFromURL(self, url):
+    #     url_attr = url.split("/")
+    #     if len(url_attr) < 5:
+    #         return False
+    #     return [url_attr[6], url]
 
     def search(self, driver, page_number, search_request):
         if page_number > 0:
@@ -93,12 +93,14 @@ class Donaldson(Provider.Provider):
             # print(changed_detail.get_attribute('class'))
             if len(changed_detail) > 0:
                 changed_detail = changed_detail[0]
-                changedDetailArticleName = changed_detail.find_elements(By.TAG_NAME, "span")[0].get_attribute(
-                    "innerHTML")
-                if len(changedDetailArticleName.split(" ")) < 2:
-                    changedDetailArticleName = ""
+                changed_detail = changed_detail.find_elements(By.TAG_NAME, "span")
+                if len(changed_detail) > 1:
+                    changedDetailArticleName = changed_detail[1].get_attribute(
+                        "innerHTML")
+                    if len(changedDetailArticleName.split(" ")) > 1 and parse.hasDigits(changedDetailArticleName.split(" ")[1]):
+                        changedDetailArticleName = changedDetailArticleName.split(" ")[1]
                 else:
-                    changedDetailArticleName = changedDetailArticleName.split(" ")[1]
+                    changedDetailArticleName = ""
 
             flag_analog = False
             analog_producer_name = ""
@@ -140,54 +142,6 @@ class Donaldson(Provider.Provider):
         parsed_html = BeautifulSoup(driver.page_source.encode('utf-8'), "html.parser")
         return parsed_html.body.find('div', attrs={'class': 'prodSubTitleMob'}).text
 
-    # def parseCrossReference(self, driver, article, timeout=1.5):
-    #
-    #     article_id = article[0]
-    #     # try:
-    #     executing_return = driver.execute_script(
-    #         "document.getElementById(\"showAllCrossReferenceListButton\").click();" +
-    #         "let blocks = document.getElementsByClassName(\"searchCrossRef\");" +
-    #         "for(let i = 0; i < blocks.length; i++){" +
-    #         "blocks[i].style.display = \"unset\";" +
-    #         "blocks[i].parentElement.className = \"\";" +
-    #         "let tag_i = blocks[i].getElementsByTagName(\"i\");" +
-    #         "if(tag_i.length > 0)" +
-    #         "tag_i[0].click();" +
-    #         "}"
-    #         "return 1;")
-    #     wait_until(int(executing_return), int(timeout * 3))
-    #
-    #     count_analogs = 0
-    #
-    #     try:
-    #         elements = driver.find_elements(By.CLASS_NAME, "searchCrossRef")
-    #         count_cross_reference_elements = len(elements)
-    #         print("НАЙДЕНО ЭЛЕМЕНТОВ КРОСС-РЕФЕРЕНСА:" + str(count_cross_reference_elements))
-    #     except JavascriptException or IndexError:
-    #         return strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE
-    #
-    #     analog_producer_name = ""
-    #     analog_producer_id = -1
-    #     analogs = []
-    #     for index, elem in enumerate(elements, start=0):
-    #         if index % 3 == 0:
-    #             if elem.text != analog_producer_name:
-    #                 if len(analogs) > 0:
-    #                     self._dbHandler.insertArticleAnalogs(article_id, analogs)
-    #                     count_analogs += len(analogs)
-    #                     analogs = []
-    #                 analog_producer_name = elem.text
-    #                 analog_producer_id = self._dbHandler.insertProducer(analog_producer_name)
-    #         elif index % 3 == 1:
-    #             analog_article_name = elem.text
-    #             analog_article_id = self._dbHandler.insertArticle(analog_article_name, analog_producer_id, self._catalogue_name)
-    #             analogs.append(analog_article_id)
-    #
-    #     if count_analogs > 0 and count_cross_reference_elements > 0:
-    #         return "SUCCESS"
-    #
-    #     return "НЕ ВЫЯВЛЕН НИ ОДИН АНАЛОГ!"
-
     def parseCrossReference(self, main_article_name, producer_name, type, cross_ref):
         main_producer_id = self._dbHandler.insertProducer(producer_name, self._catalogue_name)
         fHandler.appendToFileLog("----> PRODUCER_ID: " + str(main_producer_id))
@@ -199,7 +153,6 @@ class Donaldson(Provider.Provider):
             analog_article_names = elem['articleNames']
             analog_article_ids = []
             for article_name in analog_article_names:
-                analog_article_id = ""
                 if elem['type'] == "old":
                     analog_article_id = self._dbHandler.insertArticle(article_name, producer_id, self._catalogue_name,
                                                                       1)
@@ -208,21 +161,21 @@ class Donaldson(Provider.Provider):
                 analog_article_ids.append(analog_article_id)
             self._dbHandler.insertArticleAnalogs(main_article_id, analog_article_ids, self._catalogue_name)
 
-    def getAnalogs(self, article_url, article_id):
-        with sync_playwright() as p:
-            def handle_response(response):
-                if ("fetchproductcrossreflist?" in response.url):
-                    items = response.json()
-                    parseJSON.parseCrossRef(items, article_id, self._dbHandler)
-
-            browser = p.chromium.launch()
-            page = browser.new_page()
-
-            page.on("response", handle_response)
-            page.goto(article_url, wait_until="networkidle")
-
-            page.context.close()
-            browser.close()
+    # def getAnalogs(self, article_url, article_id):
+    #     with sync_playwright() as p:
+    #         def handle_response(response):
+    #             if ("fetchproductcrossreflist?" in response.url):
+    #                 items = response.json()
+    #                 parseJSON.parseCrossRef(items, article_id, self._dbHandler)
+    #
+    #         browser = p.chromium.launch()
+    #         page = browser.new_page()
+    #
+    #         page.on("response", handle_response)
+    #         page.goto(article_url, wait_until="networkidle")
+    #
+    #         page.context.close()
+    #         browser.close()
 
     def setInfo(self, article_name, producer_name, info_json):
         producer_id = self._dbHandler.getProducerIdByNameAndCatalogueName(producer_name, self._catalogue_name)
@@ -253,8 +206,12 @@ class Donaldson(Provider.Provider):
             browser = p.chromium.launch()
             page = browser.new_page()
             while (len(self._article_info_json) == 0 or len(self._article_cross_ref_json) == 0) and index < limit_check:
-                page.on("response", self.handle_response)
-                page.goto(article_url, wait_until="load")
+                try:
+                    page.set_default_timeout(5000)
+                    page.on("response", self.handle_response)
+                    page.goto(article_url, wait_until="networkidle")
+                except PlaywrightTimeoutError:
+                    fHandler.appendToFileLog("PlaywrightTimeoutError!")
                 index += 1
             page.context.close()
             browser.close()
@@ -285,8 +242,7 @@ class Donaldson(Provider.Provider):
 
             self._article_info_json['articleSecondaryInfo'] = {
                 "articleId": self._article_info_json['productSecondaryInfo']['productId'],
-                "imageUrl": self._article_info_json['productSecondaryInfo']['imageUrl'],
-                "fullId": self._article_info_json['productSecondaryInfo']['fullId']
+                "imageUrls": [self._article_info_json['productSecondaryInfo']['imageUrl']]
             }
             self._article_info_json.pop('productSecondaryInfo')
 

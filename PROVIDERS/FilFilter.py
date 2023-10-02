@@ -3,7 +3,7 @@ import logging
 import time
 import traceback
 
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
 from selenium.common import WebDriverException, JavascriptException
 from selenium.webdriver.common.by import By
 
@@ -211,8 +211,8 @@ class FilFilter(Provider.Provider):
 
             index += 1
 
-    def getAnalogs(self, article_url, article_id):
-        pass
+    # def getAnalogs(self, article_url, article_id):
+    #     pass
 
     def setInfo(self, article_name, producer_name, info_json):
         pass
@@ -231,8 +231,12 @@ class FilFilter(Provider.Provider):
             browser = p.chromium.launch()
             page = browser.new_page()
             while len(self._article_cross_ref_json) == 0 and index < limit_check:
-                page.on("response", self.handle_response)
-                page.goto(article_url, wait_until="load")
+                try:
+                    page.set_default_timeout(5000)
+                    page.on("response", self.handle_response)
+                    page.goto(article_url, wait_until="networkidle")
+                except PlaywrightTimeoutError:
+                    fHandler.appendToFileLog("PlaywrightTimeoutError!")
                 if index == limit_check - 2:
                     page.wait_for_timeout(2000)
                 index += 1
@@ -271,9 +275,9 @@ class FilFilter(Provider.Provider):
                     index += 1
 
             # Получаем изображение
-            imageURL = ""
+            imageURLS = []
             if len(driver.find_elements(By.CLASS_NAME, "md-card-image")) > 0:
-                imageURL = driver.find_elements(By.CLASS_NAME, "md-card-image")[0].get_attribute("src")
+                imageURLS.append(driver.find_elements(By.CLASS_NAME, "md-card-image")[0].get_attribute("src"))
 
             # Проверяем, что нашли
             if len(self._article_cross_ref_json) == 0:
@@ -298,8 +302,7 @@ class FilFilter(Provider.Provider):
 
             self._article_info_json['articleSecondaryInfo'] = {
                 "articleId": article_url.split("/")[len(article_url.split("/")) - 1],
-                "imageUrl": imageURL,
-                "fullId": ""
+                "imageUrls": imageURLS
             }
 
             type_json = dict([("articleDescription", type)])

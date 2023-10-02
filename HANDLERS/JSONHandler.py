@@ -47,5 +47,12 @@ def appendAnalogToJSON(article_json, article_name, producer_name):
     article_json = json.dumps(article_json)
     return article_json
 
+def appendAnalogsToJSON(article_json, article_names, producer_name):
+    article_json = json.loads(article_json)
+    for article_name in article_names:
+        article_json['info']['crossReference'].append(generateItemCrossRefJSON(producer_name, article_name, "real"))
+    article_json = json.dumps(article_json)
+    return article_json
+
 def convertSTRtoJSON(str):
     return json.dumps(str)

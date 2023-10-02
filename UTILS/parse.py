@@ -49,3 +49,9 @@ def hasSpecialSymbolArticle(str):
     if str.find(' ') != -1:
         return ' '
     return ''
+
+def convertSpacesToURLSpaces(str):
+    return str.replace(" ", "%20")
+
+def hasDigits(str):
+    return any(chr.isdigit() for chr in str)

@@ -10,8 +10,8 @@ class Provider:
     def getCatalogueName(self):
         pass
 
-    def getArticleFromURL(self, url):
-        pass
+    # def getArticleFromURL(self, url):
+    #     pass
 
     def getProducerId(self, article):
         pass
@@ -47,8 +47,8 @@ class Provider:
     def addAnalogToJSON(self, article, json):
        pass
 
-    def getAnalogs(self, article_url, article_id):
-        pass
+    # def getAnalogs(self, article_url, article_id):
+    #     pass
 
     def setInfo(self, article_name, producer_name, info_json):
         pass
