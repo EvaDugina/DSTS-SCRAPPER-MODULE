@@ -41,10 +41,10 @@ class Provider:
 
 
 
-    def saveJSON(self, driver, article_url, article_name, type, search_request, article):
+    def saveJSON(self, driver, article_url, article_name, type, search_request, analog_article_name, analog_producer_name):
         pass
 
-    def addAnalogToJSON(self, article, json):
+    def addAnalogToJSON(self, analog_article_name, analog_producer_name, json):
        pass
 
     # def getAnalogs(self, article_url, article_id):

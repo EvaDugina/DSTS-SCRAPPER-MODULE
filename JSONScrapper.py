@@ -46,8 +46,6 @@ if __name__=="__main__":
         fHandl.appendToFileLog("SEARCH REQUEST: " + search_request + " -> END!")
         fHandl.appendToFileLog("~~~~~~~~")
         fHandl.appendToFileLog("\n")
-
-        fHandl.moveLINKToCompleated(catalogue_name, search_request)
         # print("END3!")
 
     # print("END4!")

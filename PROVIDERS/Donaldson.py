@@ -74,8 +74,8 @@ class Donaldson(Provider.Provider):
                 self.max_page = max_page
                 return max_page
             except JavascriptException or IndexError:
-                return strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE
-        return strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE
+                return -1
+        return -1
 
     def endCondision(self, page):
         if page < self.max_page:
@@ -192,7 +192,7 @@ class Donaldson(Provider.Provider):
 
         self._dbHandler.insertArticleInfo(article_id, self._catalogue_name, url, type, output_json)
 
-    def saveJSON(self, driver, article_url, article_name, type, search_request, article):
+    def saveJSON(self, driver, article_url, article_name, type, search_request, analog_article_name, analog_producer_name):
 
         fHandler.appendToFileLog("saveJSON():")
 
@@ -222,7 +222,7 @@ class Donaldson(Provider.Provider):
                 self._article_info_json['articleMainInfo'] = {}
                 self._article_info_json['articleSecondaryInfo'] = {}
             if len(self._article_cross_ref_json) == 0:
-                logging.info("\t_article_cross_ref_json is empty()")
+                fHandler.appendToFileLog("\t_article_cross_ref_json is empty()")
                 self._article_cross_ref_json['crossReference'] = []
             # print("\tJSONs получены!")
 
@@ -255,7 +255,7 @@ class Donaldson(Provider.Provider):
             # Отправляем на генерацию полного JSON
             article_json = parseJSON.generateArticleJSON(article_name, self._catalogue_name, self._catalogue_name,
                                                          article_info_json)
-            article_json = self.addAnalogToJSON(article, article_json)
+            article_json = self.addAnalogToJSON(analog_article_name, analog_producer_name, article_json)
 
             # print("\tgenerateArticleJSON() -> completed")
 
@@ -289,11 +289,11 @@ class Donaldson(Provider.Provider):
                     self._article_info_json = {**article_info_characteristic, **article_info_else}
                     fHandler.appendToFileLog("\t_article_info_json -> НАЙДЕН!")
 
-    def addAnalogToJSON(self, article, json):
-        if len(article) == 4:
-            return JSONHandler.appendAnalogToJSON(json, article[2], article[3])
-        elif len(article) == 3:
-            return JSONHandler.appendOldAnalogToJSON(json, article[2], self._catalogue_name)
+    def addAnalogToJSON(self, analog_article_name, analog_producer_name, json):
+        if analog_article_name != "" and analog_producer_name != "":
+            return JSONHandler.appendAnalogToJSON(json, analog_article_name, analog_producer_name)
+        elif analog_article_name != "":
+            return JSONHandler.appendOldAnalogToJSON(json, analog_article_name, self._catalogue_name)
         return json
 
 

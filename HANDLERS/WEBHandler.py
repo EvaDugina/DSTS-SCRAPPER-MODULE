@@ -215,12 +215,16 @@ class WebWorker:
             fHandler.appendToFileLog("#### ОШИБКА! Не найден браузер")
             return strings.UNDEFIND_BROWSER
         max_page = self._provider.getPageCount(driver, self._search_request)
-        if max_page == strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE:
-            max_page = 1
-        else:
-            max_page = int(max_page)
         driver.close()
         driver.quit()
+
+        if max_page == -1:
+            return "НЕ НАЙДЕНЫ РЕЗУЛЬТАТЫ ПОИСКА!"
+        else:
+            if max_page == 0:
+                max_page = 1
+            else:
+                max_page = int(max_page)
 
         fHandler.appendToFileLog("\n")
 
@@ -244,6 +248,8 @@ class WebWorker:
 
         end_time = datetime.datetime.now()
         fHandler.appendToFileLog("<---- END pullCrossRefToDB(): " + str(int((end_time-start_time).total_seconds())) + " сек.\n\n")
+
+        fHandler.moveLINKToCompleated(self._catalogue_name, self._search_request)
 
         return "ССЫЛКИ ВЫТАЩЕНЫ УСПЕШНО!"
 
@@ -277,8 +283,15 @@ class WebWorker:
                     return strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE
                 fHandler.appendToFileLog("loadArticlePage() -> completed")
 
+                analog_article_name = ""
+                analog_producer_name = ""
+                if len(article) == 4:
+                    analog_article_name = article[2]
+                    analog_producer_name = article[3]
+                elif len(article) == 3:
+                    analog_article_name = article[2]
 
-                article_json = provider.saveJSON(driver, article[1], article[0], type, self._search_request, article)
+                article_json = provider.saveJSON(driver, article[1], article[0], type, self._search_request, analog_article_name, analog_producer_name)
                 # print(article_json)
 
 

@@ -3,7 +3,7 @@ import logging
 import time
 import traceback
 
-from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
+from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError, Error
 from selenium.common import WebDriverException, JavascriptException
 from selenium.webdriver.common.by import By
 
@@ -52,34 +52,41 @@ class FilFilter(Provider.Provider):
     def getPageCount(self, driver, search_request):
         driver.get(self._catalog_url + search_request)
 
-        # Отображаем максимальное количество элементов на странице
+        tbody_search_result = driver.find_elements(By.CLASS_NAME, "md-body")
+        if len(tbody_search_result) > 0:
+            ng_init_search_result = tbody_search_result[0].get_attribute("ng-init")
+            if ng_init_search_result is not None:
+                search_result_json = json.loads(ng_init_search_result.split(" = ")[1])
+                return len(search_result_json) // 15
+            else:
+                return -1
+        else:
+            return -1
+
+        # executing_return = driver.execute_script("let pageButton = document.getElementById(\"select_6\");"
+        #                                          "if (pageButton) {"
+        #                                          "pageButton.click();"
+        #                                          "let select_arrayCountByPage = document.getElementById(pageButton.getAttribute(\"aria-owns\"));"
+        #                                          "let aa = select_arrayCountByPage.firstChild.firstChild;"
+        #                                          "let button_countByPage = aa.children[aa.children.length-1];"
+        #                                          "document.getElementById(button_countByPage.getAttribute(\"id\")).click();"
+        #                                          "document.getElementById(\"select_3\").click();"
+        #                                          "return 1;"
+        #                                          "} else return 0;")
+        # wait_until(int(executing_return))
+
         # try:
-        executing_return = driver.execute_script("let pageButton = document.getElementById(\"select_6\");"
-                                                 "pageButton.click();"
-                                                 "let select_arrayCountByPage = document.getElementById(pageButton.getAttribute(\"aria-owns\"));"
-                                                 "let aa = select_arrayCountByPage.firstChild.firstChild;"
-                                                 "let button_countByPage = aa.children[aa.children.length-1];"
-                                                 "document.getElementById(button_countByPage.getAttribute(\"id\")).click();"
-                                                 "document.getElementById(\"select_3\").click();"
-                                                 "return 1;")
-        wait_until(int(executing_return))
-        # except JavascriptException:
+        #     buttonPages = driver.find_elements(By.ID, "select_3")
+        #     if buttonPages:
+        #         selectElement = driver.find_elements(By.ID, buttonPages[0].get_attribute("aria-owns"))
+        #         lastchildren = selectElement[0].find_elements(By.CSS_SELECTOR, "*")[
+        #             0].find_elements(By.CSS_SELECTOR, "*")[0].find_elements(By.TAG_NAME, "md-option")
+        #         count = len(lastchildren)
+        #         self._max_page = int(lastchildren[count - 1].get_attribute("value"))
+        #         return self._max_page
+        # except JavascriptException or IndexError:
         #     return strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE
-
-        # Получаем максимальное количество страниц в поиске
-        try:
-            buttonPages = driver.find_elements(By.ID, "select_3")
-            if buttonPages:
-                selectElement = driver.find_elements(By.ID, buttonPages[0].get_attribute("aria-owns"))
-                lastchildren = selectElement[0].find_elements(By.CSS_SELECTOR, "*")[
-                    0].find_elements(By.CSS_SELECTOR, "*")[0].find_elements(By.TAG_NAME, "md-option")
-                count = len(lastchildren)
-                self._max_page = int(lastchildren[count - 1].get_attribute("value"))
-                return self._max_page
-        except JavascriptException or IndexError:
-            return strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE
-
-        return -1
+        # return -1
 
     def endCondision(self, page):
         if page < self._max_page:
@@ -89,46 +96,6 @@ class FilFilter(Provider.Provider):
     # Поиск
     def search(self, driver, page_number, search_request):
         driver.get(self._catalog_url + search_request)
-
-        # Отображаем максимальное количество элементов на странице
-        # try:
-        executing_return = driver.execute_script("let pageButton = document.getElementById(\"select_6\");"
-                                                 "pageButton.click();"
-                                                 "let select_arrayCountByPage = document.getElementById(pageButton.getAttribute(\"aria-owns\"));"
-                                                 "let aa = select_arrayCountByPage.firstChild.firstChild;"
-                                                 "let button_countByPage = aa.children[aa.children.length-1];"
-                                                 "document.getElementById(button_countByPage.getAttribute(\"id\")).click();"
-                                                 "document.getElementById(\"select_3\").click();"
-                                                 "return 1;")
-        wait_until(int(executing_return))
-        # except JavascriptException:
-        #     return strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE
-
-        if page_number > 0:
-            # Переходим на др. страницу
-            executing_return = driver.execute_script("let pageButton = document.getElementById(\"select_6\");"
-                                                     "pageButton.click();"
-                                                     "let select_arrayCountByPage = document.getElementById(pageButton.getAttribute(\"aria-owns\"));"
-                                                     "let aa = select_arrayCountByPage.firstChild.firstChild;"
-                                                     "let button_countByPage = aa.children[" + str(
-                page_number - 1) + "];"
-                                   "button_countByPage.click();"
-                                   "return 1;")
-            wait_until(int(executing_return))
-        # else:
-        #
-        #     # Получаем максимальное количество страниц в поиске
-        #     try:
-        #         buttonPages = driver.find_elements(By.ID, "select_3")
-        #         if buttonPages:
-        #             selectElement = driver.find_elements(By.ID, buttonPages[0].get_attribute("aria-owns"))
-        #             lastchildren = selectElement[0].find_elements(By.CSS_SELECTOR, "*")[
-        #                 0].find_elements(By.CSS_SELECTOR, "*")[0].find_elements(By.TAG_NAME, "md-option")
-        #             count = len(lastchildren)
-        #             self._max_page = int(lastchildren[count - 1].get_attribute("value"))
-        #     except JavascriptException or IndexError:
-        #         return strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE
-
         return driver
 
 
@@ -217,7 +184,7 @@ class FilFilter(Provider.Provider):
     def setInfo(self, article_name, producer_name, info_json):
         pass
 
-    def saveJSON(self, driver, article_url, article_name, type, search_request, article):
+    def saveJSON(self, driver, article_url, article_name, description, search_request, analog_article_name, analog_producer_name):
 
         fHandler.appendToFileLog("saveJSON():")
 
@@ -243,19 +210,34 @@ class FilFilter(Provider.Provider):
             page.context.close()
             browser.close()
 
-            flag_changed = False
-            type = "real"
-            changed_article_names = []
+            flag_replaced = False
+            flag_replace = False
+            replaced_article_names = []
+            replace_article_names = []
+            article_type = "real"
             if len(driver.find_elements(By.CLASS_NAME, "product-link")) > 0:
-                changed_article_names.append(driver.find_elements(By.CLASS_NAME, "product-link")[0].get_attribute(
-                    "innerHTML"))
-                flag_changed = True
-                if len(self._article_cross_ref_json) == 0:
-                    type = "old"
+                status = driver.find_elements(By.CLASS_NAME, "product-link")[0]\
+                    .find_element(By.XPATH, '..')\
+                    .find_element(By.XPATH, "preceding-sibling::*[1]")\
+                    .find_elements(By.TAG_NAME, "b")[0]\
+                    .get_attribute("innerHTML")
+                status = status.split(" ")[0].upper()
+                if status == "ЗАМЕНЕНО":
+                    flag_replace = True
+                    replace_article_names.append(driver.find_elements(By.CLASS_NAME, "product-link")[0].get_attribute(
+                        "innerHTML"))
+                    article_type = "real"
+                elif status == "ЗАМЕНА":
+                    flag_replaced = True
+                    replaced_article_names.append(driver.find_elements(By.CLASS_NAME, "product-link")[0].get_attribute(
+                        "innerHTML"))
+                    article_type = "old"
+
             elif driver.find_elements(By.CLASS_NAME, "flex-40")[
                 len(driver.find_elements(By.CLASS_NAME, "flex-40")) - 1] \
                     .get_attribute("innerHTML") == "не поставляется":
-                type = "old"
+                article_type = "old"
+
 
             # Получаем характеристики
             self._article_info_json['articleMainInfo'] = {}
@@ -268,12 +250,13 @@ class FilFilter(Provider.Provider):
                     characteristic_name = md_item_characteristic.find_elements(By.CLASS_NAME, "flex-60")[0] \
                         .find_elements(By.TAG_NAME, "b")[0].get_attribute("innerHTML")
                     if index == 0:
-                        characteristic_name = characteristic_name.split(":")[0]
+                        characteristic_name = characteristic_name.split(":")[0].strip()
                     characteristic_value = md_item_characteristic.find_elements(By.CLASS_NAME, "flex-40")[0] \
                         .get_attribute("innerHTML")
+                    if characteristic_name == "Товарная группа":
+                        description = characteristic_value
                     self._article_info_json['articleMainInfo'][characteristic_name] = f"{characteristic_value}"
                     index += 1
-
             # Получаем изображение
             imageURLS = []
             if len(driver.find_elements(By.CLASS_NAME, "md-card-image")) > 0:
@@ -281,31 +264,43 @@ class FilFilter(Provider.Provider):
 
             # Проверяем, что нашли
             if len(self._article_cross_ref_json) == 0:
-                logging.info("\t_article_cross_ref_json is empty()")
+                fHandler.appendToFileLog("\t_article_cross_ref_json is empty()")
                 self._article_cross_ref_json['crossReference'] = []
                 # print("\tJSONs получены!")
 
             # Приводим Cross Ref JSON к нужному формату
             cross_ref_json = []
-            for elem in self._article_cross_ref_json['crossReference']:
-                new_json = {
-                    "producerName": elem['manufacturer_name'],
-                    "articleNames": [
-                        elem['RefNo']
-                    ],
-                    "type": "real"
-                }
-                cross_ref_json.append(new_json)
-            self._article_cross_ref_json['crossReference'] = cross_ref_json
+            previous_producer_name = ""
+            new_json = {}
+            id = 0
             self._article_cross_ref_json['crossReference'] = sorted(self._article_cross_ref_json['crossReference'],
-                                                                    key=lambda elem: elem['producerName'])
+                                                                    key=lambda elem: elem['manufacturer_name'])
+            for elem in self._article_cross_ref_json['crossReference']:
+                if elem['manufacturer_name'] != previous_producer_name:
+                    if id != 0:
+                        cross_ref_json.append(new_json)
+
+                    new_json = {
+                        "producerName": elem['manufacturer_name'],
+                        "articleNames": [
+                            elem['RefNo']
+                        ],
+                        "type": "real"
+                    }
+                    previous_producer_name = elem['manufacturer_name']
+                else:
+                    new_json['articleNames'].append(elem['RefNo'])
+                id += 1
+            cross_ref_json.append(new_json)
+
+            self._article_cross_ref_json['crossReference'] = cross_ref_json
 
             self._article_info_json['articleSecondaryInfo'] = {
                 "articleId": article_url.split("/")[len(article_url.split("/")) - 1],
                 "imageUrls": imageURLS
             }
 
-            type_json = dict([("articleDescription", type)])
+            type_json = dict([("articleDescription", description)])
 
             # Склеиваем информацию в один JSON
             article_info_json = {**self._article_cross_ref_json, **self._article_info_json}
@@ -313,11 +308,13 @@ class FilFilter(Provider.Provider):
 
             # Отправляем на генерацию полного JSON
             article_json = parseJSON.generateArticleJSON(article_name, self._catalogue_name, self._catalogue_name,
-                                                            article_info_json, type)
-            article_json = self.addAnalogToJSON(article, article_json)
+                                                            article_info_json, article_type)
+            article_json = self.addAnalogToJSON(analog_article_name, analog_producer_name, article_json)
 
-            if flag_changed:
-                article_json = JSONHandler.appendAnalogsToJSON(article_json, changed_article_names, self._catalogue_name)
+            if flag_replaced:
+                article_json = JSONHandler.appendAnalogsToJSON(article_json, replaced_article_names, self._catalogue_name)
+            if flag_replace:
+                article_json = JSONHandler.appendOldAnalogsToJSON(article_json, replace_article_names, self._catalogue_name)
 
             # print("\tgenerateArticleJSON() -> completed")
 
@@ -344,14 +341,16 @@ class FilFilter(Provider.Provider):
                         fHandler.appendToFileLog("\t_article_cross_ref_json -> НАЙДЕН!")
                     else:
                         return None
-                except:
-                    logging.warning(traceback.format_exc())
+                except PlaywrightTimeoutError:
+                    fHandler.appendToFileLog("PlaywrightTimeoutError!")
+                except Error:
+                    pass
 
-    def addAnalogToJSON(self, article, json):
-        if len(article) == 4:
-            return JSONHandler.appendAnalogToJSON(json, article[2], article[3])
-        # elif len(article) == 3:
-        #     return JSONHandler.appendOldAnalogToJSON(json, article[2], self._catalogue_name)
+    def addAnalogToJSON(self, analog_article_name, analog_producer_name, json):
+        if analog_article_name != "" and analog_producer_name != "":
+            return JSONHandler.appendAnalogToJSON(json, analog_article_name, analog_producer_name)
+        elif analog_article_name != "":
+            return JSONHandler.appendOldAnalogToJSON(json, analog_article_name, self._catalogue_name)
         return json
 
     def goBack(self, driver):

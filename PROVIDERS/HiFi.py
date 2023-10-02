@@ -350,7 +350,7 @@ class HiFi(Provider.Provider):
 
             # Проверяем, что нашли
             if len(self._article_cross_ref_json) == 0:
-                logging.info("\t_article_cross_ref_json is empty()")
+                fHandler.appendToFileLog("\t_article_cross_ref_json is empty()")
                 self._article_cross_ref_json['crossReference'] = []
             # print("\tJSONs получены!")
 
