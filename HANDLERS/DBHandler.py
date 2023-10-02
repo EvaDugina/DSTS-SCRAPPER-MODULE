@@ -224,17 +224,20 @@ class DBWorker:
 
             producer_id = cursor.fetchone()[0]
 
-            fHandl.appendToFileLog(f"\t\tINSERTED PRODUCER: {producer_id} - {producer_name_with_spaces}")
+            # Добавляем себя в вариации но только в первый раз
+            self.insertProducerNameVariation(producer_id, producer_name_with_spaces, catalogue_name)
+
+            fHandl.appendToFileLog(f"\t\tINSERTED PRODUCER: {producer_id} - '{producer_name_with_spaces}'")
         else:
             producer = self.getProducerByName(producer_name_with_spaces)
             producer_id = producer[0]
 
-        # Добавляем себя в БД producers_name_variations
-        self.insertProducerNameVariation(producer_id, producer_line, catalogue_name)
+        # Добавляем себя в вариации
+        self.insertProducerNameVariation(producer_id, producer_name, catalogue_name)
 
         # Добавляем аналогичное имя из линии без конкатенаций
         if bool(variation_symbol):
-            self.insertProducerNameVariation(producer_id, producer_name, catalogue_name)
+            self.insertProducerNameVariation(producer_id, producer_line, catalogue_name)
             producer_name = producer_line.split(variation_symbol)[1]
             if variation_symbol == '(':
                 producer_name = producer_name[:-1]
@@ -419,6 +422,10 @@ def querySelectProducerByName(producer_name):
            "INNER JOIN producers_name_variations ON producers_name_variations.producer_id = producers.id " \
            f"WHERE producers_name_variations.producer_name = '{producer_name}';"
 
+# def querySelectProducerByName(producer_name):
+#     return "SELECT * FROM producers " \
+#            f'WHERE producer_name = {producer_name};'
+
 def querySelectProducerNameVariation(producer_name, catalogue_name):
     return "SELECT * FROM producers_name_variations " \
            f"WHERE producer_name = '{producer_name}' AND catalogue_name = '{catalogue_name}';"
@@ -525,3 +532,17 @@ def queryDeleteSimmilarArticlesComparison(group_id):
 #
 # where articles.producer_id = 1547 and a_simmilar.producer_id = 1353
 # and articles.id != a_simmilar.id;
+
+
+# SELECT DISTINCT producers.*, producers_name_variations.producer_name AS second_name FROM producers
+# LEFT JOIN producers_name_variations ON producers_name_variations.producer_id = producers.id
+# ORDER BY producers.producer_name;
+
+# TRUNCATE articles, articles_comparison, articles_details, articles_name_variations,
+# characteristics_comparison, producers, producers_comparison, producers_dsts_names,
+# producers_name_variations;
+
+
+# SELECT DISTINCT producers.*, producers_name_variations.producer_name AS producer_name_variation FROM producers
+# INNER JOIN producers_name_variations ON producers_name_variations.producer_id = producers.id
+# WHERE producers_name_variations.producer_name = 'ALLIS-CHALMERS';
