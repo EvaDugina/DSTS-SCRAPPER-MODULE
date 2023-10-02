@@ -291,7 +291,8 @@ class FilFilter(Provider.Provider):
                 else:
                     new_json['articleNames'].append(elem['RefNo'])
                 id += 1
-            cross_ref_json.append(new_json)
+            if new_json != {}:
+                cross_ref_json.append(new_json)
 
             self._article_cross_ref_json['crossReference'] = cross_ref_json
 

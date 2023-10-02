@@ -501,3 +501,27 @@ def queryDeleteSimmilarArticlesComparison(group_id):
            "USING articles_comparison as b " \
            f"WHERE a.id > b.id AND a.group_id = {group_id}" \
            "AND a.group_id = b.group_id AND a.article_id = b.article_id AND a.catalogue_name = b.catalogue_name;"
+
+
+
+
+# SELECT articles.*, ac.group_id, ac.catalogue_name, ac_simmilar.article_id AS simmilar_article_id,
+# a_simmilar.article_name, a_simmilar.type
+# FROM articles
+# LEFT JOIN articles_comparison AS ac ON ac.article_id = articles.id
+# LEFT JOIN articles_comparison AS ac_simmilar ON ac_simmilar.group_id = ac.group_id
+# LEFT JOIN articles AS a_simmilar ON a_simmilar.id = ac_simmilar.article_id
+# WHERE articles.type = 1 and articles.producer_id = a_simmilar.producer_id
+# and articles.id != a_simmilar.id;
+
+
+# SELECT articles.*, ac.group_id, ac.catalogue_name,
+# ac_simmilar.article_id AS simmilar_article_id, a_simmilar.article_name, a_simmilar.type
+# FROM articles
+#
+# left join articles_comparison AS ac ON ac.article_id = articles.id
+# left join articles_comparison AS ac_simmilar ON ac_simmilar.group_id = ac.group_id
+# left join articles AS a_simmilar ON a_simmilar.id = ac_simmilar.article_id
+#
+# where articles.producer_id = 1547 and a_simmilar.producer_id = 1353
+# and articles.id != a_simmilar.id;
