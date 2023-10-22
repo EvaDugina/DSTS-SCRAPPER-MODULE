@@ -204,7 +204,7 @@ class WebWorker:
 
         # ПРОВЕРКА ИНТЕРНЕТ СОЕДИНЕНИЯ
         try:
-            requests.head(self._provider.getMainUrl(), timeout=1)
+            requests.head(self._provider.getMainUrl(), timeout=5)
         except:
             fHandler.appendToFileLog("#### ОШИБКА! Отсутствует интернет-соединение")
             return strings.INTERNET_ERROR

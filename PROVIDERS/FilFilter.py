@@ -199,7 +199,7 @@ class FilFilter(Provider.Provider):
             page = browser.new_page()
             while len(self._article_cross_ref_json) == 0 and index < limit_check:
                 try:
-                    page.set_default_timeout(5000)
+                    # page.set_default_timeout(5000)
                     page.on("response", self.handle_response)
                     page.goto(article_url, wait_until="networkidle")
                 except PlaywrightTimeoutError:
