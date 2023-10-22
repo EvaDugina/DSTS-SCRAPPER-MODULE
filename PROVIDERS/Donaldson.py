@@ -6,7 +6,7 @@ import traceback
 from bs4 import BeautifulSoup
 from selenium.common import WebDriverException, JavascriptException
 from selenium.webdriver.common.by import By
-from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
+from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError, Error
 
 from PROVIDERS import Provider
 from HANDLERS import FILEHandler as fHandler, JSONHandler as parseJSON, JSONHandler
@@ -75,7 +75,7 @@ class Donaldson(Provider.Provider):
                 return max_page
             except JavascriptException or IndexError:
                 return -1
-        return -1
+        return 0
 
     def endCondision(self, page):
         if page < self.max_page:
@@ -237,14 +237,23 @@ class Donaldson(Provider.Provider):
                 cross_ref_json.append(new_json)
             self._article_cross_ref_json['crossReference'] = cross_ref_json
 
-            self._article_info_json['articleMainInfo'] = self._article_info_json['productMainInfo']
-            self._article_info_json.pop('productMainInfo')
+            if 'productMainInfo' in self._article_info_json:
+                self._article_info_json['articleMainInfo'] = self._article_info_json['productMainInfo']
+                self._article_info_json.pop('productMainInfo')
+            else:
+                self._article_info_json['articleMainInfo'] = []
 
-            self._article_info_json['articleSecondaryInfo'] = {
-                "articleId": self._article_info_json['productSecondaryInfo']['productId'],
-                "imageUrls": [self._article_info_json['productSecondaryInfo']['imageUrl']]
-            }
-            self._article_info_json.pop('productSecondaryInfo')
+            if 'productSecondaryInfo' in self._article_info_json:
+                self._article_info_json['articleSecondaryInfo'] = {
+                    "articleId": self._article_info_json['productSecondaryInfo']['productId'],
+                    "imageUrls": [self._article_info_json['productSecondaryInfo']['imageUrl']]
+                }
+                self._article_info_json.pop('productSecondaryInfo')
+            else:
+                self._article_info_json['articleSecondaryInfo'] = {
+                    "articleId": -1,
+                    "imageUrls": []
+                }
 
             type_json = dict([("articleDescription", type)])
 
@@ -273,21 +282,24 @@ class Donaldson(Provider.Provider):
                         if 'crossReferenceList' in response.json():
                             self._article_cross_ref_json['crossReference'] = response.json()['crossReferenceList']
                             fHandler.appendToFileLog("\t_article_cross_ref_json -> НАЙДЕН!")
-                    except:
-                        logging.warning(traceback.format_exc())
+                    except Error:
+                        pass
 
             if len(self._article_info_json) < 1:
                 if "fetchProductAttrAndRecentlyViewed?" in response.url:
                     article_info_characteristic = dict()
                     article_info_else = dict()
-                    if 'productAttributesResponse' in response.json():
-                        article_info_characteristic['productMainInfo'] = response.json()['productAttributesResponse'][
-                            'dynamicAttributes']
-                    if 'recentlyViewedProductResponse' in response.json():
-                        article_info_else['productSecondaryInfo'] = \
-                            response.json()['recentlyViewedProductResponse']['recentlyViewedProducts'][0]
-                    self._article_info_json = {**article_info_characteristic, **article_info_else}
-                    fHandler.appendToFileLog("\t_article_info_json -> НАЙДЕН!")
+                    try:
+                        if 'productAttributesResponse' in response.json():
+                            article_info_characteristic['productMainInfo'] = response.json()['productAttributesResponse'][
+                                'dynamicAttributes']
+                        if 'recentlyViewedProductResponse' in response.json():
+                            article_info_else['productSecondaryInfo'] = \
+                                response.json()['recentlyViewedProductResponse']['recentlyViewedProducts'][0]
+                        self._article_info_json = {**article_info_characteristic, **article_info_else}
+                        fHandler.appendToFileLog("\t_article_info_json -> НАЙДЕН!")
+                    except Error:
+                        pass
 
     def addAnalogToJSON(self, analog_article_name, analog_producer_name, json):
         if analog_article_name != "" and analog_producer_name != "":

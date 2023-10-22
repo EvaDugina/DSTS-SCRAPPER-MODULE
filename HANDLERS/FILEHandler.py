@@ -64,7 +64,7 @@ def getLINKSfromFileByLines(catalogue_name, search_request, start_line, end_line
     index = 0
     with open(f'LINKS/{catalogue_name}/{search_request}.txt') as file:
         for line in file:
-            if index >= start_line and index < end_line:
+            if index >= start_line and index < end_line and line.rstrip() != "":
                 links.append(line.rstrip().split(" "))
             index += 1
     return links

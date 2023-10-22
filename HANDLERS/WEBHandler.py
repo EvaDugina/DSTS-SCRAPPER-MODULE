@@ -122,8 +122,8 @@ def getLINKSbyPage(thread_id, pages):
 
     for page in pages:
 
-        driver = _provider.search(driver, page, _search_request)
-        if driver == strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE:
+        a = _provider.search(driver, page, _search_request)
+        if not a:
             return strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE
         fHandler.appendToFileLog(f"T{page}: search() -> completed")
 
@@ -363,27 +363,33 @@ class WebWorker:
         else:
             return ""
 
-        pages = []
-        for j in range(0, count_threads):
-            pages.append([])
-
-        # Распределяем страницы между потоками
-        for i in range(0, max_page // count_threads * count_threads, count_threads):
-            for j in range(0, count_threads):
-                pages[j].append(i + j)
-        if max_page % count_threads != 0:
-            for i in range((max_page // count_threads) * count_threads, max_page):
-                pages[i % 4].append(i)
-        # print(pages)
-
-        # Запускаем потоки
-        tasks = []
-        for i in range(0, count_threads):
+        if self._catalogue_name == "HIFI":
             _thread_results.append(list())
-            tasks.append(threading.Thread(target=getLINKSbyPage, args=(i, pages[i],)))
-        for index, process in enumerate(tasks):
-            process.start()
-            fHandler.appendToFileLog(f"T{index} START!")
-        fHandler.appendToFileLog("\n")
-        for process in tasks:
-            process.join()
+            getLINKSbyPage(0, range(0, max_page))
+
+        else:
+
+            pages = []
+            for j in range(0, count_threads):
+                pages.append([])
+
+            # Распределяем страницы между потоками
+            for i in range(0, max_page // count_threads * count_threads, count_threads):
+                for j in range(0, count_threads):
+                    pages[j].append(i + j)
+            if max_page % count_threads != 0:
+                for i in range((max_page // count_threads) * count_threads, max_page):
+                    pages[i % 4].append(i)
+            # print(pages)
+
+            # Запускаем потоки
+            tasks = []
+            for i in range(0, count_threads):
+                _thread_results.append(list())
+                tasks.append(threading.Thread(target=getLINKSbyPage, args=(i, pages[i],)))
+            for index, process in enumerate(tasks):
+                process.start()
+                fHandler.appendToFileLog(f"T{index} START!")
+            fHandler.appendToFileLog("\n")
+            for process in tasks:
+                process.join()
