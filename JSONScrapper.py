@@ -2,15 +2,15 @@
 
 import requests
 
-from HANDLERS import WEBHandler as wHandl
-from HANDLERS import FILEHandler as fHandl
+from HANDLERS import WEBHandler as wHandler
+from HANDLERS import FILEHandler as fHandler
 
 
 # https://techorde.com/scraping-browser-xhr-requests-using-python/
 # https://scrapism.lav.io/scraping-xhr/
 # https://www.zenrows.com/blog/selenium-python-web-scraping#add-real-headers
 # https://www.zenrows.com/blog/web-scraping-without-getting-blocked#why-is-web-scraping-not-allowed
-
+from UTILS import strings
 
 if __name__=="__main__":
 
@@ -28,24 +28,29 @@ if __name__=="__main__":
     # response = requests.request("GET", url, data=payload, headers=headers, params=querystring)
     # print(response.text.encode("utf-8"))
 
-    fHandl.createLOGSDir()
+    fHandler.createLOGSDir()
 
-    search_requests = fHandl.getSearchRequests()
+    search_requests = fHandler.getSearchRequests()
 
     for request in search_requests:
 
         catalogue_name = request[0]
         search_request = request[1]
 
-        fHandl.appendToFileLog("~~~~~~~~")
-        fHandl.appendToFileLog("SEARCH REQUEST: " + search_request + " -> START!")
-        fHandl.appendToFileLog("\n")
-        webWorker = wHandl.WebWorker(catalogue_name, search_request)
+        fHandler.appendToFileLog("~~~~~~~~")
+        fHandler.appendToFileLog("SEARCH REQUEST: " + search_request + " -> START!")
+        fHandler.appendToFileLog("\n")
+        webWorker = wHandler.WebWorker(catalogue_name, search_request)
         status_parse = webWorker.pullCrossRefToDB()
+
+        if status_parse == strings.INTERNET_ERROR:
+            number = fHandler.getCountCompleatedOUTPUTFiles() + 1
+            fHandler.appendToFileOutput(strings.getConnectionErrorMessage(catalogue_name), number)
+
         # print("END2!")
-        fHandl.appendToFileLog("SEARCH REQUEST: " + search_request + " -> END!")
-        fHandl.appendToFileLog("~~~~~~~~")
-        fHandl.appendToFileLog("\n")
+        fHandler.appendToFileLog("SEARCH REQUEST: " + search_request + " -> END!")
+        fHandler.appendToFileLog("~~~~~~~~")
+        fHandler.appendToFileLog("\n")
         # print("END3!")
 
     # print("END4!")
