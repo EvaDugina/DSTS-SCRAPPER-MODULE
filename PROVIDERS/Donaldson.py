@@ -1,7 +1,7 @@
 import json
 import time
-import logging
 import traceback
+import logging
 
 from bs4 import BeautifulSoup
 from selenium.common import WebDriverException, JavascriptException
@@ -11,9 +11,6 @@ from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeo
 from PROVIDERS import Provider
 from HANDLERS import FILEHandler as fHandler, JSONHandler as parseJSON, JSONHandler
 from UTILS import strings, parse
-
-logging.getLogger().setLevel(logging.INFO)
-
 
 def wait_until(return_value, period=1):
     time.sleep(period)
@@ -27,16 +24,9 @@ class Donaldson(Provider.Provider):
     _catalogue_url = "https://shop.donaldson.com/store/ru-ru/search?Ntt="
     _article_url = "https://shop.donaldson.com/store/ru-ru/product/"
     _catalogue_name = "DONALDSON"
-    max_page = 1
-    _dbHandler = None
-
-    _article_cross_ref_json = dict()
-    _article_info_json = dict()
 
     def __init__(self, producer_id, dbHandler):
-        self._producer_id = producer_id
-        self._dbHandler = dbHandler
-        self._producer_name = dbHandler.getProducerById(self._producer_id)
+        super().__init__(producer_id, dbHandler)
 
     def getMainUrl(self):
         return self._main_url
@@ -46,12 +36,6 @@ class Donaldson(Provider.Provider):
 
     def getCatalogueName(self):
         return self._catalogue_name
-
-    # def getArticleFromURL(self, url):
-    #     url_attr = url.split("/")
-    #     if len(url_attr) < 5:
-    #         return False
-    #     return [url_attr[6], url]
 
     def search(self, driver, page_number, search_request):
         if page_number > 0:
@@ -77,7 +61,7 @@ class Donaldson(Provider.Provider):
                 return -1
         return 0
 
-    def endCondision(self, page):
+    def endCondition(self, page):
         if page < self.max_page:
             return True
         return False
@@ -140,7 +124,9 @@ class Donaldson(Provider.Provider):
 
     def getArticleType(self, driver) -> str:
         parsed_html = BeautifulSoup(driver.page_source.encode('utf-8'), "html.parser")
-        return parsed_html.body.find('div', attrs={'class': 'prodSubTitleMob'}).text
+        body = parsed_html.body
+        found = body.find('div', attrs={'class': 'prodSubTitleMob'})
+        return found.text
 
     def parseCrossReference(self, main_article_name, producer_name, type, cross_ref):
         main_producer_id = self._dbHandler.insertProducer(producer_name, self._catalogue_name)

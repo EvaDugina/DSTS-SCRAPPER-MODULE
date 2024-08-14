@@ -88,7 +88,7 @@ class FilFilter(Provider.Provider):
         #     return strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE
         # return -1
 
-    def endCondision(self, page):
+    def endCondition(self, page):
         if page < self._max_page:
             return True
         return False

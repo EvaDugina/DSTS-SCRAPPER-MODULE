@@ -18,12 +18,12 @@ def createJSONSDir(catalogue_name):
 
 
 
-def moveLINKToCompleated(catalogue_name, search_request):
+def moveLINKToCompleted(catalogue_name, search_request):
     number = getCountCompleatedLINKSFiles(catalogue_name) + 1
     os.rename(f'LINKS/{catalogue_name}/{search_request}.txt', f'LINKS/{catalogue_name}/{number}_{search_request}.txt')
     shutil.move(f'LINKS/{catalogue_name}/{number}_{search_request}.txt', f'LINKS/{catalogue_name}/_completed')
 
-def moveJSONToCompleated(catalogue_name, search_request):
+def moveJSONToCompleted(catalogue_name, search_request):
     number = getCountCompleatedJSONSFiles(catalogue_name) + 1
     os.rename(f'JSONS/{catalogue_name}/{search_request}.txt', f'JSONS/{catalogue_name}/{number}_{search_request}.txt')
     shutil.move(f'JSONS/{catalogue_name}/{number}_{search_request}.txt', f'JSONS/{catalogue_name}/_completed')

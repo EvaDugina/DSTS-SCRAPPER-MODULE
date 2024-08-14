@@ -144,7 +144,7 @@ class HiFi(Provider.Provider):
                     except Error:
                         return
 
-    def endCondision(self, page):
+    def endCondition(self, page):
         if page < self.max_page_search + self.max_page_cross_ref:
             return True
         return False
