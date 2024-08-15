@@ -4,6 +4,7 @@ import datetime
 import json
 import threading
 
+import Decorators
 from HANDLERS import WEBHandler as wHandler
 from HANDLERS import FILEHandler as fHandler
 from HANDLERS import DBHandler as dbHandler
@@ -26,25 +27,15 @@ def parseJSONS(start_line, end_line):
         catalogue_name = line_json['catalogue_name']
         producer_name = line_json['producer_name']
 
-        # start_time_parsing_jsons = datetime.datetime.now()
         parseJSON(article_name, producer_name, line_json['type'], line_json['info'], catalogue_name)
-        print(f"{article_name} --> успешно добавлен!")
-        # end_time_parsing_jsons = datetime.datetime.now()
-        # fHandler.appendToFileLog("parseCrossReference() -> completed! ВРЕМЯ: " +
-        #                          str(int(
-        #                              (end_time_parsing_jsons - start_time_parsing_jsons).total_seconds())) + " сек.")
-
-        fHandler.appendToFileOutput(f'{article_name} ИЗ КАТАЛОГА {catalogue_name} УСПЕШНО ДОБАВЛЕН!', _number)
-
-
-    fHandler.appendToFileLog("\n")
+        print(f'{article_name} ИЗ КАТАЛОГА {catalogue_name} УСПЕШНО ДОБАВЛЕН!')
 
 
 def parseJSON(main_article_name, main_producer_name, type, json_info, catalogue_name):
     global _dbHandler
 
     main_producer_id = _dbHandler.insertProducer(main_producer_name, catalogue_name)
-    fHandler.appendToFileLog("----> PRODUCER_ID: " + str(main_producer_id))
+    # print("----> PRODUCER_ID: " + str(main_producer_id))
 
     main_article_id = _dbHandler.insertArticle(main_article_name, main_producer_id, catalogue_name,
                                                convertTypeToDigits(type))
@@ -59,7 +50,7 @@ def parseJSON(main_article_name, main_producer_name, type, json_info, catalogue_
 def parseCrossReference(_dbHandler, catalogue_name, cross_ref, main_article_id):
     for elem in cross_ref:
         producer_name = elem['producerName']
-        fHandler.appendToFileLog("\t--> PRODUCER_NAME: " + str(producer_name))
+        # print("\t--> PRODUCER_NAME: " + str(producer_name))
         producer_id = _dbHandler.insertProducer(producer_name, catalogue_name)
         analog_article_names = elem['articleNames']
         analog_article_ids = []
@@ -76,6 +67,7 @@ def parseInfo(_dbHandler, catalogue_name, json_info, main_article_id, main_artic
     _dbHandler.insertArticleInfo(main_article_id, catalogue_name, url, json_info['articleDescription'].upper(), json_info)
 
 
+@Decorators.time_decorator
 def parseJSONSbyThreads(catalogue_name, search_request):
     global _catalogue_name, _search_request
 
@@ -90,31 +82,22 @@ def parseJSONSbyThreads(catalogue_name, search_request):
     # Распределяем ссылки (части файла) по потокам
     parts = []
     count_lines_in_part = count_lines // count_threads
+    offset = 0
     if count_lines // count_threads > 0:
         for i in range(0, count_threads):
-            start_index = i * count_lines_in_part
-            end_index = (i + 1) * count_lines_in_part
+            start_index = i * count_lines_in_part + offset
+            if i < count_lines % count_threads:
+                offset += 1
+            end_index = (i + 1) * count_lines_in_part + offset
             parts.append([start_index, end_index])
 
-    # Добавляем поток с нераспределёнными ссылками
-    if count_lines % count_threads != 0:
-        parts.append([count_lines - (count_lines % count_threads), count_lines])
-
     # Запускаем потоки
-
     tasks = []
     for i in range(0, count_threads):
         tasks.append(threading.Thread(target=parseJSONS, args=(parts[i][0], parts[i][1])))
     for i in range(0, count_threads):
         tasks[i].start()
-        fHandler.appendToFileLog(f"T{i} START!")
         tasks[i].join()
-    if count_lines % count_threads != 0:
-        index = len(parts) - 1
-        tasks.append(threading.Thread(target=parseJSONS, args=(parts[index][0], parts[index][1])))
-        tasks[index].start()
-        fHandler.appendToFileLog(f"T{index} START!")
-        tasks[index].join()
 
 
 def convertTypeToDigits(type):
@@ -137,18 +120,10 @@ if __name__ == "__main__":
         fHandler.appendToFileLog("+++++++")
         fHandler.appendToFileLog("CATALOGUE_NAME: " + catalogue_name)
         fHandler.appendToFileLog("SEARCH_REQUEST: " + search_request)
-        fHandler.appendToFileLog("parseJSONSbyThreads() -> start!")
 
         # Парсим JSONS
         parseJSONSbyThreads(catalogue_name, search_request)
-        # start_time_parsing_jsons = datetime.datetime.now()
-        # end_time_parsing_jsons = datetime.datetime.now()
-
-        # fHandler.appendToFileLog("parseJSONSbyThreads() -> completed! ВРЕМЯ: " +
-        #                          str(int(
-        #                              (end_time_parsing_jsons - start_time_parsing_jsons).total_seconds())) + " сек.")
 
         fHandler.moveJSONToCompleted(catalogue_name, search_request)
 
-        fHandler.appendToFileLog("+++++++")
-        fHandler.appendToFileLog("\n")
+        fHandler.appendToFileLog("+++++++\n")

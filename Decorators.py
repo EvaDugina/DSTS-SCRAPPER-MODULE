@@ -8,7 +8,7 @@ def time_decorator(function):
         start = time.perf_counter()
         result = function(*args, **kwargs)
         runtime = time.perf_counter() - start
-        print(f"{function.__name__}(): {runtime:.10f}")
+        print(f"{function.__name__}(): {runtime:.10f}\n")
         return result
 
     return time_decorator

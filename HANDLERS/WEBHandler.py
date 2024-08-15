@@ -1,8 +1,3 @@
-import time
-from multiprocessing import Process, Pool, Lock
-
-import requests
-import datetime
 import threading
 
 from selenium import webdriver
@@ -64,7 +59,6 @@ class WebWorker:
             return Error.INTERNET_CONNECTION
 
         print("----> pullCrossRefToDB() ")
-        start_time = datetime.datetime.now()
 
         # ПОЛУЧАЕМ КОЛИЧЕСТВО СТРАНИЦ
         driver = getBrowser()
@@ -124,7 +118,6 @@ class WebWorker:
             tasks.append(threading.Thread(target=parseLINKS, args=(parts[index][0], parts[index][1], self.getProvider(), self._search_request)))
         for i in range(0, count_threads):
             tasks[i].start()
-            print(f"T{i} START!")
         for i in range(0, count_threads):
             tasks[i].join()
 
@@ -157,7 +150,6 @@ class WebWorker:
             if max_page % count_threads != 0:
                 for i in range((max_page // count_threads) * count_threads, max_page):
                     pages[i % 4].append(i)
-            # print(pages)
 
             # Запускаем потоки
             tasks = []
@@ -166,8 +158,6 @@ class WebWorker:
                 tasks.append(threading.Thread(target=getLINKSbyPage, args=(i, pages[i],)))
             for index, thread in enumerate(tasks):
                 thread.start()
-                print(f"T{index} START!")
-            print("\n")
             for thread in tasks:
                 thread.join()
 
@@ -274,12 +264,9 @@ def parseLINKS(start_line, end_line, provider, search_request):
         return Error.UNDEFIND_BROWSER
 
     articles = fHandler.getLINKSfromFileByLines(provider.getCatalogueName(), search_request, start_line, end_line)
-    # print("\n")
 
     # Проходимся по линиям в файле
     for article in articles:
-
-        # print(f'{article[0]}')
 
         # Загружаем страницу артикула по ссылке
         driver = provider.loadArticlePage(driver, article[1])
@@ -288,7 +275,6 @@ def parseLINKS(start_line, end_line, provider, search_request):
             return Error.UNLOAD_ARTICLE_PAGE
         if driver == strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE:
             return Error.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE
-        # print("loadArticlePage() -> completed")
 
         # Вытаскиваем аналоги
         analog_article_name = ""

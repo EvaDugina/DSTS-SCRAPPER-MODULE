@@ -1,15 +1,12 @@
 import json
 import time
 import logging
-import traceback
-from json import JSONDecodeError
 
-from bs4 import BeautifulSoup
-from playwright._impl._sync_base import SyncBase
 from selenium.common import WebDriverException, JavascriptException
 from selenium.webdriver.common.by import By
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError, Error
 
+import Decorators
 from PROVIDERS import Provider
 from HANDLERS import FILEHandler as fHandler, JSONHandler as parseJSON, JSONHandler
 from UTILS import strings, parse
@@ -51,7 +48,7 @@ class HiFi(Provider.Provider):
 
     def __init__(self, producer_id, dbHandler):
         super().__init__(producer_id, dbHandler)
-        # self._playwright = sync_playwright().start()
+        self._playwright = sync_playwright().start()
 
     def getMainUrl(self):
         return self._main_url
@@ -65,12 +62,6 @@ class HiFi(Provider.Provider):
     def getCatalogueName(self):
         return self._catalogue_name
 
-    # def getArticleFromURL(self, url):
-    #     url_attr = url.split("/")
-    #     if len(url_attr) < 5:
-    #         return False
-    #     return [url_attr[6], url]
-
     def search(self, driver, page_number, search_request):
         if page_number > 0:
             # Переходим на др. страницу
@@ -83,12 +74,13 @@ class HiFi(Provider.Provider):
         else:
             return False
 
+    @Decorators.time_decorator
     def getPageCount(self, driver, search_request):
         self.search_request = search_request
 
         index = 0
         limit_check = 3
-        browser = sync_playwright().start().chromium.launch()
+        browser = self._playwright.chromium.launch()
         page = browser.new_page()
         self.count_responses = 0
         while (self.max_page_search == 0 or self.max_page_cross_ref == 0 or
@@ -166,7 +158,7 @@ class HiFi(Provider.Provider):
 
         index = 0
         limit_check = 3
-        browser = sync_playwright().start().chromium.launch()
+        browser = self._playwright.chromium.launch(headless=False)
         page = browser.new_page()
         self.count_responses = 0
         while (len(self._search_array) < 1 or len(self._cross_reference) < 1) and index < limit_check:
@@ -249,7 +241,7 @@ class HiFi(Provider.Provider):
         return driver
 
     def getArticleType(self, driver) -> str:
-        browser = sync_playwright().start().chromium.launch()
+        browser = self._playwright.chromium.launch()
         page = browser.new_page()
         b = ""
         try:
