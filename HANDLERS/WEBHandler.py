@@ -239,7 +239,6 @@ def getLINKSbyPage(thread_id, pages):
         a = _provider.search(driver, page, _search_request)
         if not a:
             return strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE
-        print(f"T{page}: search() -> completed")
 
         articles = _provider.parseSearchResult(driver, page)
         if len(articles) < 1:
@@ -256,10 +255,6 @@ def getLINKSbyPage(thread_id, pages):
                 fHandler.appendLINKtoFile(_catalogue_name, article[0] + " " + article[1] + " " + article[2], _search_request)
             else:
                 fHandler.appendLINKtoFile(_catalogue_name, article[0] + " " + article[1], _search_request)
-        print(f"T{page}: appendLINKtoFile() -> completed")
-
-        print(f'PAGE №{page} -> completed')
-        print("\n")
 
     # AttributeError: 'NoneType' object has no attribute 'close'
     # Exception in thread Thread-9 (getLINKSbyPage):

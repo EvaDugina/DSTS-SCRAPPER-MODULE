@@ -1,7 +1,6 @@
 import json
 import logging
 import time
-import traceback
 
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError, Error
 from selenium.common import WebDriverException, JavascriptException
@@ -9,7 +8,6 @@ from selenium.webdriver.common.by import By
 
 from PROVIDERS import Provider
 from HANDLERS import FILEHandler as fHandler, JSONHandler as parseJSON, JSONHandler
-from UTILS import strings
 
 logging.getLogger().setLevel(logging.INFO)
 
@@ -30,21 +28,16 @@ class FilFilter(Provider.Provider):
     _dbHandler = None
 
     def __init__(self, producer_id, dbHandler):
-        self._producer_id = producer_id
-        self._dbHandler = dbHandler
-        self._producer_name = dbHandler.getProducerById(self._producer_id)
+        super().__init__(producer_id, dbHandler)
 
     def getMainUrl(self):
         return self._main_url
 
+    def getProductUrl(self):
+        return "https://catalog.filfilter.com.tr/ru/product/"
+
     def getCatalogueName(self):
         return self._catalogue_name
-
-    # def getArticleFromURL(self, url):
-    #     url_attr = url.split("/")
-    #     if len(url_attr) < 4:
-    #         return False
-    #     return [url_attr[5], url]
 
     def getProducerId(self, article):
         return self._dbHandler.insertProducer(article[3])
@@ -102,7 +95,6 @@ class FilFilter(Provider.Provider):
 
     # Парсинг одну страницу поиска
     def parseSearchResult(self, driver, pageNumber):
-        # print("parseSearchResult")
         tbody_search_result = driver.find_elements(By.CLASS_NAME, "md-body")[0]
         ng_init_search_result = tbody_search_result.get_attribute("ng-init")
         search_result_json = json.loads(ng_init_search_result.split(" = ")[1])
@@ -266,7 +258,6 @@ class FilFilter(Provider.Provider):
             if len(self._article_cross_ref_json) == 0:
                 fHandler.appendToFileLog("\t_article_cross_ref_json is empty()")
                 self._article_cross_ref_json['crossReference'] = []
-                # print("\tJSONs получены!")
 
             # Приводим Cross Ref JSON к нужному формату
             cross_ref_json = []
@@ -317,8 +308,6 @@ class FilFilter(Provider.Provider):
             if flag_replace:
                 article_json = JSONHandler.appendOldAnalogsToJSON(article_json, replace_article_names, self._catalogue_name)
 
-            # print("\tgenerateArticleJSON() -> completed")
-
             # fHandler.appendJSONToFile("DONALDSON", article_json, search_request)
             fHandler.appendToFileLog("\tappendToFile() -> completed")
             fHandler.appendToFileLog("saveJSON() -> completed")
@@ -330,11 +319,8 @@ class FilFilter(Provider.Provider):
             if len(self._article_cross_ref_json) > 0:
                 return None
 
-            # print(response.url)
             if "get_product_oe_references" in response.url:
-                # print("НАШЁЛ!")
                 try:
-                    # print(response.json())
                     if 'retval' in response.json():
                         retval = response.json()['retval']
                         if retval:

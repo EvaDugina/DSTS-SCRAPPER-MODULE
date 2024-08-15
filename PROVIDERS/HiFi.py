@@ -50,13 +50,14 @@ class HiFi(Provider.Provider):
     article_url = ""
 
     def __init__(self, producer_id, dbHandler):
-        self._producer_id = producer_id
-        self._dbHandler = dbHandler
-        self._producer_name = dbHandler.getProducerById(self._producer_id)
+        super().__init__(producer_id, dbHandler)
         # self._playwright = sync_playwright().start()
 
     def getMainUrl(self):
         return self._main_url
+
+    def getProductUrl(self):
+        return "https://catalog.hifi-filter.com/en-GB/product/"
 
     def getMaxPage(self):
         return self.max_page

@@ -31,6 +31,9 @@ class Donaldson(Provider.Provider):
     def getMainUrl(self):
         return self._main_url
 
+    def getProductUrl(self):
+        return "https://shop.donaldson.com/store/ru-ru/product/"
+
     def getMaxPage(self):
         return self.max_page
 

@@ -53,6 +53,9 @@ class ProviderHandler:
             raise Exception("getProviderNameByCode() index out of range")
 
         provider_name = self.getProviderNameByCode(provider_code)
+        return self.getProviderByProviderName(provider_name)
+
+    def getProviderByProviderName(self, provider_name):
         if provider_name == "DONALDSON":
             from PROVIDERS.Donaldson import Donaldson
             return lambda producer_id, dbHandler: Donaldson(producer_id, dbHandler)
@@ -62,9 +65,9 @@ class ProviderHandler:
         # elif provider_name == "MANN":
         #     from PROVIDERS.Mann import Mann
         #     return lambda producer_id, dbHandler: Mann(producer_id, dbHandler)
-        elif provider_name == "FLEETGUARD":
-            from PROVIDERS.Fleetguard import Fleetguard
-            return lambda producer_id, dbHandler: Fleetguard(producer_id, dbHandler)
+        # elif provider_name == "FLEETGUARD":
+        #     from PROVIDERS.Fleetguard import Fleetguard
+        #     return lambda producer_id, dbHandler: Fleetguard(producer_id, dbHandler)
         # elif provider_name == "SF":
         #     from PROVIDERS.SF import SF
         #     return lambda producer_id, dbHandler: SF(producer_id, dbHandler)
@@ -75,9 +78,7 @@ class ProviderHandler:
             from PROVIDERS.FilFilter import FilFilter
             return lambda producer_id, dbHandler: FilFilter(producer_id, dbHandler)
 
-        raise Exception("getProviderByProviderCode() incorrect provider name")
-
-
+        raise Exception("getProviderByProviderName() incorrect provider name")
 
     def getProviderNameByCode(self, provider_code):
         if not provider_code < len(Providers):
@@ -90,6 +91,10 @@ class ProviderHandler:
                 return provider["code"]
         return None
 
+    def getArticleBaseURLbyProviderName(self, provider_name):
+        provider = self.getProviderByProviderName(provider_name)(None, None)
+        return provider.getProductUrl()
+
 
 class Provider:
 
@@ -99,12 +104,16 @@ class Provider:
     _article_cross_ref_json = dict()
     _article_info_json = dict()
 
-    def __init__(self, producer_id, dbHandler):
-        self._producer_id = producer_id
-        self._dbHandler = dbHandler
-        self._producer_name = dbHandler.getProducerById(self._producer_id)
+    def __init__(self, producer_id=None, dbHandler=None):
+        if producer_id is not None and dbHandler is not None:
+            self._producer_id = producer_id
+            self._dbHandler = dbHandler
+            self._producer_name = dbHandler.getProducerById(self._producer_id)
 
     def getMainUrl(self):
+        pass
+
+    def getProductUrl(self):
         pass
 
     def getCatalogueName(self):

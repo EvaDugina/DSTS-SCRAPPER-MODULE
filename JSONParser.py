@@ -7,6 +7,7 @@ import threading
 from HANDLERS import WEBHandler as wHandler
 from HANDLERS import FILEHandler as fHandler
 from HANDLERS import DBHandler as dbHandler
+from PROVIDERS.Provider import ProviderHandler
 
 _search_request = ""
 _catalogue_name = ""
@@ -71,7 +72,7 @@ def parseCrossReference(_dbHandler, catalogue_name, cross_ref, main_article_id):
 
 def parseInfo(_dbHandler, catalogue_name, json_info, main_article_id, main_article_name):
     _dbHandler.insertCharacteristics(json_info['articleMainInfo'])
-    url = f"{getArticleBaseURLbyProviderName(catalogue_name)}{main_article_name}/{json_info['articleSecondaryInfo']['articleId']}"
+    url = f"{ProviderHandler().getArticleBaseURLbyProviderName(catalogue_name)}{main_article_name}/{json_info['articleSecondaryInfo']['articleId']}"
     _dbHandler.insertArticleInfo(main_article_id, catalogue_name, url, json_info['articleDescription'].upper(), json_info)
 
 
@@ -115,16 +116,6 @@ def parseJSONSbyThreads(catalogue_name, search_request):
         fHandler.appendToFileLog(f"T{index} START!")
         tasks[index].join()
 
-
-def getArticleBaseURLbyProviderName(provider_name):
-    if provider_name == "DONALDSON":
-        return "https://shop.donaldson.com/store/ru-ru/product/"
-    elif provider_name == "FILFILTER":
-        return "https://catalog.filfilter.com.tr/ru/product/"
-    elif provider_name == "HIFI":
-        return "https://catalog.hifi-filter.com/en-GB/product/"
-    else:
-        return ""
 
 def convertTypeToDigits(type):
     if type == "old":
