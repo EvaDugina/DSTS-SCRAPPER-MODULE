@@ -243,7 +243,7 @@ class HiFi(Provider.Provider):
 
     def loadArticlePage(self, driver, article_url, search_type=False):
         try:
-            # driver.implicitly_wait(20)
+            driver.implicitly_wait(20)
             driver.get(article_url)
             self.article_url = article_url
         except WebDriverException:
@@ -337,11 +337,10 @@ class HiFi(Provider.Provider):
                     "articleNames": [],
                     "type": "real"
                 }
-                articles = analog.find_elements(By.TAG_NAME, "span")
+                articles = analog.find_element(By.TAG_NAME, "div").find_elements(By.XPATH, "./*")
                 for article in articles:
                     analog_article = article.find_element(By.TAG_NAME, "a")
                     analog_article_name = analog_article.text.replace("$", "").strip()
-                    print(analog_article_name)
                     new_json['articleNames'].append(analog_article_name)
                 self._article_cross_ref_json['crossReference'].append(new_json)
 
