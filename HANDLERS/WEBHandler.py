@@ -1,3 +1,4 @@
+import asyncio
 import threading
 
 from selenium import webdriver
@@ -61,15 +62,18 @@ class WebWorker:
         print("----> pullCrossRefToDB() ")
 
         # ПОЛУЧАЕМ КОЛИЧЕСТВО СТРАНИЦ
-        driver = getBrowser()
-        if driver is None:
-            print("#### ОШИБКА! Не найден браузер")
-            return Error.UNDEFIND_BROWSER
+        driver = None
+        if not self._provider_name == "HIFI":
+            driver = getBrowser()
+            if driver is None:
+                print("#### ОШИБКА! Не найден браузер")
+                return Error.UNDEFIND_BROWSER
 
         max_page = self._provider.getPageCount(driver, self._search_request)
 
-        driver.close()
-        driver.quit()
+        if not self._provider_name == "HIFI":
+            driver.close()
+            driver.quit()
 
         if max_page == -1:
             return Error.FIND_NOTHING
@@ -115,7 +119,7 @@ class WebWorker:
         # Запускаем потоки
         tasks = []
         for index in range(0, count_threads):
-            tasks.append(threading.Thread(target=parseLINKS, args=(parts[index][0], parts[index][1], self.getProvider(), self._search_request)))
+            tasks.append(threading.Thread(target=parseLINKS, args=(parts[index][0], parts[index][1], self._provider, self._search_request)))
         for i in range(0, count_threads):
             tasks[i].start()
         for i in range(0, count_threads):
@@ -160,6 +164,8 @@ class WebWorker:
                 thread.start()
             for thread in tasks:
                 thread.join()
+
+        return
 
 
 #
@@ -219,10 +225,12 @@ def getLINKSbyPage(thread_id, pages):
     global _provider, _search_request, _catalogue_name
 
     # ПОИСК БРАУЗЕРА ДЛЯ ИСПОЛЬЗОВАНИЯ
-    driver = getBrowser()
-    if driver is None:
-        print("#### ОШИБКА! Не найден браузер")
-        return strings.UNDEFIND_BROWSER
+    driver = None
+    if not _catalogue_name == "HIFI":
+        driver = getBrowser()
+        if driver is None:
+            print("#### ОШИБКА! Не найден браузер")
+            return strings.UNDEFIND_BROWSER
 
     for page in pages:
 
@@ -248,8 +256,9 @@ def getLINKSbyPage(thread_id, pages):
 
     # AttributeError: 'NoneType' object has no attribute 'close'
     # Exception in thread Thread-9 (getLINKSbyPage):
-    driver.close()
-    driver.quit()
+    if not _catalogue_name == "HIFI":
+        driver.close()
+        driver.quit()
 
     return "ССЫЛКИ ВЫТАЩЕНЫ УСПЕШНО!"
 

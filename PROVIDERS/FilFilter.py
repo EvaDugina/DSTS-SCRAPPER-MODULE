@@ -208,20 +208,20 @@ class FilFilter(Provider.Provider):
             replace_article_names = []
             article_type = "real"
             if len(driver.find_elements(By.CLASS_NAME, "product-link")) > 0:
-                status = driver.find_elements(By.CLASS_NAME, "product-link")[0]\
+                status = driver.find_element(By.CLASS_NAME, "product-link")\
                     .find_element(By.XPATH, '..')\
                     .find_element(By.XPATH, "preceding-sibling::*[1]")\
-                    .find_elements(By.TAG_NAME, "b")[0]\
+                    .find_element(By.TAG_NAME, "b")\
                     .get_attribute("innerHTML")
                 status = status.split(" ")[0].upper()
                 if status == "ЗАМЕНЕНО":
                     flag_replace = True
-                    replace_article_names.append(driver.find_elements(By.CLASS_NAME, "product-link")[0].get_attribute(
+                    replace_article_names.append(driver.find_element(By.CLASS_NAME, "product-link").get_attribute(
                         "innerHTML"))
                     article_type = "real"
                 elif status == "ЗАМЕНА":
                     flag_replaced = True
-                    replaced_article_names.append(driver.find_elements(By.CLASS_NAME, "product-link")[0].get_attribute(
+                    replaced_article_names.append(driver.find_element(By.CLASS_NAME, "product-link").get_attribute(
                         "innerHTML"))
                     article_type = "old"
 
@@ -239,11 +239,11 @@ class FilFilter(Provider.Provider):
                 md_list_item_characteristics.pop(0)
                 index = 0
                 for md_item_characteristic in md_list_item_characteristics:
-                    characteristic_name = md_item_characteristic.find_elements(By.CLASS_NAME, "flex-60")[0] \
-                        .find_elements(By.TAG_NAME, "b")[0].get_attribute("innerHTML")
+                    characteristic_name = md_item_characteristic.find_element(By.CLASS_NAME, "flex-60") \
+                        .find_element(By.TAG_NAME, "b").get_attribute("innerHTML")
                     if index == 0:
                         characteristic_name = characteristic_name.split(":")[0].strip()
-                    characteristic_value = md_item_characteristic.find_elements(By.CLASS_NAME, "flex-40")[0] \
+                    characteristic_value = md_item_characteristic.find_element(By.CLASS_NAME, "flex-40") \
                         .get_attribute("innerHTML")
                     if characteristic_name == "Товарная группа":
                         description = characteristic_value
@@ -252,7 +252,7 @@ class FilFilter(Provider.Provider):
             # Получаем изображение
             imageURLS = []
             if len(driver.find_elements(By.CLASS_NAME, "md-card-image")) > 0:
-                imageURLS.append(driver.find_elements(By.CLASS_NAME, "md-card-image")[0].get_attribute("src"))
+                imageURLS.append(driver.find_element(By.CLASS_NAME, "md-card-image").get_attribute("src"))
 
             # Проверяем, что нашли
             if len(self._article_cross_ref_json) == 0:
