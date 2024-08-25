@@ -63,7 +63,7 @@ def parseCrossReference(_dbHandler, catalogue_name, cross_ref, main_article_id):
 
 def parseInfo(_dbHandler, catalogue_name, json_info, main_article_id, main_article_name):
     _dbHandler.insertCharacteristics(json_info['articleMainInfo'])
-    url = f"{ProviderHandler().getArticleBaseURLbyProviderName(catalogue_name)}{main_article_name}/{json_info['articleSecondaryInfo']['articleId']}"
+    url = f"{ProviderHandler().getArticleBaseURLbyProviderName(catalogue_name, main_article_name)}/{json_info['articleSecondaryInfo']['articleId']}"
     _dbHandler.insertArticleInfo(main_article_id, catalogue_name, url, json_info['articleDescription'].upper(), json_info)
 
 

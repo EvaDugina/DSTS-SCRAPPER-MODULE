@@ -234,7 +234,15 @@ def getLINKSbyPage(thread_id, pages):
 
     for page in pages:
 
-        a = _provider.search(driver, page, _search_request)
+        if _provider.getCatalogueName() == "MANN":
+            if page >= _provider.max_page_search:
+                break
+
+        if _provider.getCatalogueName() == "MANN":
+            a = _provider.searchProducts(driver, page, _search_request)
+        else:
+            a = _provider.search(driver, page, _search_request)
+
         if not a:
             return strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE
 
@@ -253,6 +261,39 @@ def getLINKSbyPage(thread_id, pages):
                 fHandler.appendLINKtoFile(_catalogue_name, article[0] + " " + article[1] + " " + article[2], _search_request)
             else:
                 fHandler.appendLINKtoFile(_catalogue_name, article[0] + " " + article[1], _search_request)
+
+
+    if _provider.getCatalogueName() == "MANN":
+
+        for page in pages:
+
+            if page >= _provider.max_page_cross_ref:
+                break
+
+            a = _provider.searchCrossRef(driver, page, _search_request)
+            if not a:
+                return strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE
+
+            articles = _provider.parseCrossReferenceResult(driver, page)
+            if len(articles) < 1:
+                fHandler.appendLINKtoFile(_catalogue_name, "", _search_request)
+                return "ОТСУТСВУЮТ РЕЗУЛЬТАТЫ ПОИСКА"
+
+            for article in articles:
+                _thread_results[thread_id].append(article[0])
+                print(f"{article[0]} - найден!")
+
+                if len(article) == 4:
+                    fHandler.appendLINKtoFile(_catalogue_name,
+                                              article[0] + " " + article[1] + " " + article[2] + " " + article[3],
+                                              _search_request)
+                elif len(article) == 3:
+                    fHandler.appendLINKtoFile(_catalogue_name, article[0] + " " + article[1] + " " + article[2],
+                                              _search_request)
+                else:
+                    fHandler.appendLINKtoFile(_catalogue_name, article[0] + " " + article[1], _search_request)
+
+
 
     # AttributeError: 'NoneType' object has no attribute 'close'
     # Exception in thread Thread-9 (getLINKSbyPage):

@@ -17,7 +17,7 @@ Providers = [
     {
         "name": "MANN",
         "code": 2,
-        "active": False
+        "active": True
     },
     {
         "name": "FLEETGUARD",
@@ -62,9 +62,9 @@ class ProviderHandler:
         elif provider_name == "HIFI":
             from PROVIDERS.HiFi import HiFi
             return lambda producer_id, dbHandler: HiFi(producer_id, dbHandler)
-        # elif provider_name == "MANN":
-        #     from PROVIDERS.Mann import Mann
-        #     return lambda producer_id, dbHandler: Mann(producer_id, dbHandler)
+        elif provider_name == "MANN":
+            from PROVIDERS.Mann import Mann
+            return lambda producer_id, dbHandler: Mann(producer_id, dbHandler)
         # elif provider_name == "FLEETGUARD":
         #     from PROVIDERS.Fleetguard import Fleetguard
         #     return lambda producer_id, dbHandler: Fleetguard(producer_id, dbHandler)
@@ -91,9 +91,9 @@ class ProviderHandler:
                 return provider["code"]
         return None
 
-    def getArticleBaseURLbyProviderName(self, provider_name):
+    def getArticleBaseURLbyProviderName(self, provider_name, article_name):
         provider = self.getProviderByProviderName(provider_name)(None, None)
-        return provider.getProductUrl()
+        return provider.getProductUrl(article_name)
 
 
 class Provider:
@@ -113,16 +113,10 @@ class Provider:
     def getMainUrl(self):
         pass
 
-    def getProductUrl(self):
+    def getProductUrl(self, article_name):
         pass
 
     def getCatalogueName(self):
-        pass
-
-    # def getArticleFromURL(self, url):
-    #     pass
-
-    def getProducerId(self, article):
         pass
 
     def getPageCount(self, driver, search_request):
@@ -137,6 +131,9 @@ class Provider:
         pass
 
     def parseSearchResult(self, driver, pageNumber):
+        pass
+
+    def parseCrossReferenceResult(self, driver, pageNumber):
         pass
 
     def loadArticlePage(self, driver, article_url, search_type):

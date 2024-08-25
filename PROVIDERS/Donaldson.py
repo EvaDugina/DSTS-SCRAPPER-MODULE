@@ -31,8 +31,8 @@ class Donaldson(Provider.Provider):
     def getMainUrl(self):
         return self._main_url
 
-    def getProductUrl(self):
-        return "https://shop.donaldson.com/store/ru-ru/product/"
+    def getProductUrl(self, article_name):
+        return self._article_url + article_name
 
     def getMaxPage(self):
         return self.max_page
@@ -54,10 +54,10 @@ class Donaldson(Provider.Provider):
 
     def getPageCount(self, driver, search_request):
         driver.get(self._catalogue_url + search_request)
-        lastButton = driver.find_elements(By.CLASS_NAME, "lastButton")
+        lastButton = driver.find_element(By.CLASS_NAME, "lastButton")
         if len(lastButton) > 0:
             try:
-                max_page = int(lastButton[0].find_elements(By.TAG_NAME, "a")[0].get_attribute("innerHTML"))
+                max_page = int(lastButton.find_element(By.TAG_NAME, "a").get_attribute("innerHTML"))
                 self.max_page = max_page
                 return max_page
             except JavascriptException or IndexError:
@@ -73,8 +73,8 @@ class Donaldson(Provider.Provider):
         div_elements = driver.find_elements(By.CLASS_NAME, "listTile")
         articles = []
         for index, div in enumerate(div_elements, start=0):
-            first_div_children = div.find_elements(By.TAG_NAME, "div")[0]
-            a_elem = first_div_children.find_elements(By.CLASS_NAME, "donaldson-part-details")[0]
+            first_div_children = div.find_element(By.TAG_NAME, "div")
+            a_elem = first_div_children.find_element(By.CLASS_NAME, "donaldson-part-details")
             changed_detail = first_div_children.find_elements(By.CLASS_NAME, "hideInMobile")
             changedDetailArticleName = ""
             # print(changed_detail.get_attribute('class'))
@@ -96,24 +96,24 @@ class Donaldson(Provider.Provider):
             if len(div_analog_producer) > 0:
                 analog_by_search = div_analog_producer[0]
                 if len(analog_by_search.find_elements(By.TAG_NAME, "span")) == 4:
-                    analog_producer_name = analog_by_search.find_elements(By.TAG_NAME, "span")[0] \
-                        .find_elements(By.TAG_NAME, "span")[0].get_attribute("innerHTML")
+                    analog_producer_name = analog_by_search.find_element(By.TAG_NAME, "span") \
+                        .find_element(By.TAG_NAME, "span").get_attribute("innerHTML")
                     analog_article_name = analog_by_search.find_elements(By.TAG_NAME, "span")[2] \
-                        .find_elements(By.TAG_NAME, "span")[0].get_attribute("innerHTML")
+                        .find_element(By.TAG_NAME, "span").get_attribute("innerHTML")
                     flag_analog = True
 
             try:
-                spans = a_elem.find_elements(By.TAG_NAME, "span")
+                span = a_elem.find_element(By.TAG_NAME, "span")
                 if changedDetailArticleName != "":
                     articles.append(
-                        [spans[0].get_attribute("innerHTML"), a_elem.get_attribute("href"), changedDetailArticleName])
+                        [span.get_attribute("innerHTML"), a_elem.get_attribute("href"), changedDetailArticleName])
                 else:
                     if flag_analog:
                         articles.append(
-                            [spans[0].get_attribute("innerHTML"), a_elem.get_attribute("href"), analog_article_name,
+                            [span.get_attribute("innerHTML"), a_elem.get_attribute("href"), analog_article_name,
                              analog_producer_name])
                     else:
-                        articles.append([spans[0].get_attribute("innerHTML"), a_elem.get_attribute("href")])
+                        articles.append([span.get_attribute("innerHTML"), a_elem.get_attribute("href")])
             except JavascriptException or IndexError:
                 return strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE
         return articles
@@ -150,21 +150,8 @@ class Donaldson(Provider.Provider):
                 analog_article_ids.append(analog_article_id)
             self._dbHandler.insertArticleAnalogs(main_article_id, analog_article_ids, self._catalogue_name)
 
-    # def getAnalogs(self, article_url, article_id):
-    #     with sync_playwright() as p:
-    #         def handle_response(response):
-    #             if ("fetchproductcrossreflist?" in response.url):
-    #                 items = response.json()
-    #                 parseJSON.parseCrossRef(items, article_id, self._dbHandler)
-    #
-    #         browser = p.chromium.launch()
-    #         page = browser.new_page()
-    #
-    #         page.on("response", handle_response)
-    #         page.goto(article_url, wait_until="networkidle")
-    #
-    #         page.context.close()
-    #         browser.close()
+    def parseCrossReferenceResult(self, driver, pageNumber):
+        pass
 
     def setInfo(self, article_name, producer_name, info_json):
         producer_id = self._dbHandler.getProducerIdByNameAndCatalogueName(producer_name, self._catalogue_name)

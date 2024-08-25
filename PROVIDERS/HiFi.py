@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 from gevent import monkey
 monkey.patch_all()
 
@@ -60,28 +63,14 @@ class HiFi(Provider.Provider):
     def getMainUrl(self):
         return self._main_url
 
-    def getProductUrl(self):
-        return "https://catalog.hifi-filter.com/en-GB/product/"
+    def getProductUrl(self, article_name):
+        return self._article_url + article_name
 
     def getMaxPage(self):
         return self.max_page
 
     def getCatalogueName(self):
         return self._catalogue_name
-
-    def search(self, driver, page_number, search_request):
-        return True
-        # На случай, если использовать driver
-        # if page_number > 0:
-        #     # Переходим на др. страницу
-        #     driver.get(self._catalogue_url + search_request + f'&p={page_number + 1}')
-        #     return True
-        # elif page_number == 0:
-        #     driver.get(self._catalogue_url + search_request)
-        #     # self.max_page = self.getPageCount(driver, search_request)
-        #     return True
-        # else:
-        #     return False
 
     @Decorators.time_decorator
     def getPageCount(self, driver, search_request):
@@ -161,6 +150,20 @@ class HiFi(Provider.Provider):
             return True
         return False
 
+    def search(self, driver, page_number, search_request):
+        return True
+        # РќР° СЃР»СѓС‡Р°Р№, РµСЃР»Рё РёСЃРїРѕР»СЊР·РѕРІР°С‚СЊ driver
+        # if page_number > 0:
+        #     # РџРµСЂРµС…РѕРґРёРј РЅР° РґСЂ. СЃС‚СЂР°РЅРёС†Сѓ
+        #     driver.get(self._catalogue_url + search_request + f'&p={page_number + 1}')
+        #     return True
+        # elif page_number == 0:
+        #     driver.get(self._catalogue_url + search_request)
+        #     # self.max_page = self.getPageCount(driver, search_request)
+        #     return True
+        # else:
+        #     return False
+
     def parseSearchResult(self, driver, pageNumber):
         self._search_array = []
         self._cross_reference = []
@@ -191,6 +194,9 @@ class HiFi(Provider.Provider):
             articles += self._cross_reference
         return articles
 
+    def parseCrossReferenceResult(self, driver, pageNumber):
+        pass
+
     def searchMainResponseHandle(self, response):
         if "search?id=" in response.url:
             try:
@@ -201,7 +207,7 @@ class HiFi(Provider.Provider):
             except Error:
                 return
 
-            # Вытаскиваем элементы Кросс-Референса
+            # Р’С‹С‚Р°СЃРєРёРІР°РµРј СЌР»РµРјРµРЅС‚С‹ РљСЂРѕСЃСЃ-Р РµС„РµСЂРµРЅСЃР°
             if len(arrayElements) > 0 and 'brand' in arrayElements[0] and len(self._cross_reference) < 1:
                 for elem in arrayElements:
                     analog_article_name = parse.concatArticleName(elem['reference'])
@@ -232,7 +238,7 @@ class HiFi(Provider.Provider):
 
                         self._cross_reference.append(article)
 
-            # Вытаскиваем элементы обычного поиска
+            # Р’С‹С‚Р°СЃРєРёРІР°РµРј СЌР»РµРјРµРЅС‚С‹ РѕР±С‹С‡РЅРѕРіРѕ РїРѕРёСЃРєР°
             elif len(arrayElements) > 0 and len(self._search_array) < 1 \
                     and 'brand' not in arrayElements[0] and 'catalog' not in arrayElements[0]:
                 for elem in arrayElements:
@@ -313,7 +319,7 @@ class HiFi(Provider.Provider):
 
         self.article_id = article_url.split("/")[-1].split("%20")[0]
 
-        # Получаем Cross-Reference
+        # РџРѕР»СѓС‡Р°РµРј Cross-Reference
         self._article_cross_ref_json['crossReference'] = []
         analogs = driver.find_elements(By.CLASS_NAME, "compatible-application")
         if len(analogs) > 0:
@@ -331,7 +337,7 @@ class HiFi(Provider.Provider):
                     new_json['articleNames'].append(analog_article_name)
                 self._article_cross_ref_json['crossReference'].append(new_json)
 
-        # Получаем характеристики
+        # РџРѕР»СѓС‡Р°РµРј С…Р°СЂР°РєС‚РµСЂРёСЃС‚РёРєРё
         self._article_info_json['articleMainInfo'] = {}
         if len(driver.find_elements(By.CLASS_NAME, "attribute")) > 1:
             for div_attribute in driver.find_elements(By.CLASS_NAME, "attribute"):
@@ -342,7 +348,7 @@ class HiFi(Provider.Provider):
                     characteristic_value = spans_characteristic_value[1].get_attribute("innerHTML")
                 self._article_info_json['articleMainInfo'][characteristic_name] = f"{characteristic_value}"
 
-        #  Вытаскиваем изображения
+        #  Р’С‹С‚Р°СЃРєРёРІР°РµРј РёР·РѕР±СЂР°Р¶РµРЅРёСЏ
         imageURLS = []
         figures = driver.find_elements(By.TAG_NAME, "figure")
         for figure in figures:
@@ -355,11 +361,11 @@ class HiFi(Provider.Provider):
 
         type_json = dict([("articleDescription", type)])
 
-        # Склеиваем информацию в один JSON
+        # РЎРєР»РµРёРІР°РµРј РёРЅС„РѕСЂРјР°С†РёСЋ РІ РѕРґРёРЅ JSON
         article_info_json = {**self._article_cross_ref_json, **self._article_info_json}
         article_info_json = {**article_info_json, **type_json}
 
-        # Отправляем на генерацию полного JSON
+        # РћС‚РїСЂР°РІР»СЏРµРј РЅР° РіРµРЅРµСЂР°С†РёСЋ РїРѕР»РЅРѕРіРѕ JSON
         article_json = parseJSON.generateArticleJSON(article_name, self._catalogue_name, self._catalogue_name,
                                                      article_info_json)
         article_json = self.addAnalogToJSON(analog_article_name, analog_producer_name, article_json)
@@ -379,7 +385,7 @@ class HiFi(Provider.Provider):
 
         self.article_id = article_url.split("/")[-1].split("%20")[0]
 
-        # Получаем Cross-Ref
+        # РџРѕР»СѓС‡Р°РµРј Cross-Ref
         index = 0
         limit_check = 3
         self._article_cross_ref_json = {}
@@ -396,7 +402,7 @@ class HiFi(Provider.Provider):
         page.context.close()
         browser.close()
 
-        # Получаем характеристики
+        # РџРѕР»СѓС‡Р°РµРј С…Р°СЂР°РєС‚РµСЂРёСЃС‚РёРєРё
         self._article_info_json['articleMainInfo'] = {}
         if len(driver.find_elements(By.CLASS_NAME, "attribute")) > 1:
             for div_attribute in driver.find_elements(By.CLASS_NAME, "attribute"):
@@ -407,19 +413,19 @@ class HiFi(Provider.Provider):
                     characteristic_value = spans_characteristic_value[1].get_attribute("innerHTML")
                 self._article_info_json['articleMainInfo'][characteristic_name] = f"{characteristic_value}"
 
-        #  Вытаскиваем изображения
+        #  Р’С‹С‚Р°СЃРєРёРІР°РµРј РёР·РѕР±СЂР°Р¶РµРЅРёСЏ
         imageURLS = []
         figures = driver.find_elements(By.TAG_NAME, "figure")
         for figure in figures:
             imageURLS.append(figure.find_elements(By.TAG_NAME, "img")[0].get_attribute("src"))
 
-        # Проверяем, что нашли
+        # РџСЂРѕРІРµСЂСЏРµРј, С‡С‚Рѕ РЅР°С€Р»Рё
         if len(self._article_cross_ref_json) == 0:
             fHandler.appendToFileLog("\t_article_cross_ref_json is empty()")
             self._article_cross_ref_json['crossReference'] = []
-        # print("\tJSONs получены!")
+        # print("\tJSONs РїРѕР»СѓС‡РµРЅС‹!")
 
-        # Приводим JSONS к нужному формату
+        # РџСЂРёРІРѕРґРёРј JSONS Рє РЅСѓР¶РЅРѕРјСѓ С„РѕСЂРјР°С‚Сѓ
         cross_ref_json = []
         for key in self._article_cross_ref_json['crossReference']:
             new_json = {
@@ -439,11 +445,11 @@ class HiFi(Provider.Provider):
 
         type_json = dict([("articleDescription", type)])
 
-        # Склеиваем информацию в один JSON
+        # РЎРєР»РµРёРІР°РµРј РёРЅС„РѕСЂРјР°С†РёСЋ РІ РѕРґРёРЅ JSON
         article_info_json = {**self._article_cross_ref_json, **self._article_info_json}
         article_info_json = {**article_info_json, **type_json}
 
-        # Отправляем на генерацию полного JSON
+        # РћС‚РїСЂР°РІР»СЏРµРј РЅР° РіРµРЅРµСЂР°С†РёСЋ РїРѕР»РЅРѕРіРѕ JSON
         article_json = parseJSON.generateArticleJSON(article_name, self._catalogue_name, self._catalogue_name,
                                                      article_info_json)
         article_json = self.addAnalogToJSON(analog_article_name, analog_producer_name, article_json)

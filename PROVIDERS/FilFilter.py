@@ -33,14 +33,11 @@ class FilFilter(Provider.Provider):
     def getMainUrl(self):
         return self._main_url
 
-    def getProductUrl(self):
-        return "https://catalog.filfilter.com.tr/ru/product/"
+    def getProductUrl(self, article_name):
+        return self._article_url + article_name
 
     def getCatalogueName(self):
         return self._catalogue_name
-
-    def getProducerId(self, article):
-        return self._dbHandler.insertProducer(article[3])
 
     def getPageCount(self, driver, search_request):
         driver.get(self._catalog_url + search_request)
@@ -109,6 +106,9 @@ class FilFilter(Provider.Provider):
                     articles.append([elem['product']['SearchArtNo'], link])
 
         return articles
+
+    def parseCrossReferenceResult(self, driver, pageNumber):
+        pass
 
     # Загрузка страницы товара
     def loadArticlePage(self, driver, article_url, search_type=False):
