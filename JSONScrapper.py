@@ -55,3 +55,4 @@ if __name__=="__main__":
 
         # appendSearchRequestEndToFileLog(search_request)
 
+    exit(0)

@@ -291,21 +291,6 @@ class HiFi(Provider.Provider):
                 analog_article_ids.append(analog_article_id)
             self._dbHandler.insertArticleAnalogs(main_article_id, analog_article_ids, self._catalogue_name)
 
-    # def getAnalogs(self, article_url, article_id):
-#         def handle_response(response):
-#             if ("fetchproductcrossreflist?" in response.url):
-#                 items = response.json()
-#                 parseJSON.parseCrossRef(items, article_id, self._dbHandler)
-#
-#         browser = p.chromium.launch(headless=False)
-#         page = browser.new_page()
-#
-#         page.on("response", handle_response)
-#         page.goto(article_url, wait_until="networkidle")
-#
-#         page.context.close()
-#         browser.close()
-
     def setInfo(self, article_name, producer_name, info_json):
         producer_id = self._dbHandler.getProducerIdByNameAndCatalogueName(producer_name, self._catalogue_name)
         article_id = self._dbHandler.getArticleByName(article_name, producer_id)[0]
@@ -325,6 +310,8 @@ class HiFi(Provider.Provider):
     def saveJSON(self, driver, article_url, article_name, type, search_request, analog_article_name, analog_producer_name):
 
         fHandler.appendToFileLog("saveJSON():")
+
+        self.article_id = article_url.split("/")[-1].split("%20")[0]
 
         # Получаем Cross-Reference
         self._article_cross_ref_json['crossReference'] = []
