@@ -141,6 +141,9 @@ class WebWorker:
             _thread_results.append(list())
             getLINKSbyPage(0, range(0, max_page))
 
+        elif self._provider_name == "FLEETGUARD":
+            saveArticles(self._provider.parseSearchResult(None))
+
         else:
 
             pages = []
@@ -153,7 +156,7 @@ class WebWorker:
                     pages[j].append(i + j)
             if max_page % count_threads != 0:
                 for i in range((max_page // count_threads) * count_threads, max_page):
-                    pages[i % 4].append(i)
+                    pages[i % _THREADS_LIMIT].append(i)
 
             # Запускаем потоки
             tasks = []
@@ -251,16 +254,7 @@ def getLINKSbyPage(thread_id, pages):
             fHandler.appendLINKtoFile(_catalogue_name, "", _search_request)
             return "ОТСУТСВУЮТ РЕЗУЛЬТАТЫ ПОИСКА"
 
-        for article in articles:
-            _thread_results[thread_id].append(article[0])
-            print(f"{article[0]} - найден!")
-
-            if len(article) == 4:
-                fHandler.appendLINKtoFile(_catalogue_name, article[0] + " " + article[1] + " " + article[2] + " " + article[3], _search_request)
-            elif len(article) == 3:
-                fHandler.appendLINKtoFile(_catalogue_name, article[0] + " " + article[1] + " " + article[2], _search_request)
-            else:
-                fHandler.appendLINKtoFile(_catalogue_name, article[0] + " " + article[1], _search_request)
+        saveArticles(_catalogue_name, _search_request, articles, thread_id)
 
 
     if _provider.getCatalogueName() == "MANN":
@@ -279,19 +273,7 @@ def getLINKSbyPage(thread_id, pages):
                 fHandler.appendLINKtoFile(_catalogue_name, "", _search_request)
                 return "ОТСУТСВУЮТ РЕЗУЛЬТАТЫ ПОИСКА"
 
-            for article in articles:
-                _thread_results[thread_id].append(article[0])
-                print(f"{article[0]} - найден!")
-
-                if len(article) == 4:
-                    fHandler.appendLINKtoFile(_catalogue_name,
-                                              article[0] + " " + article[1] + " " + article[2] + " " + article[3],
-                                              _search_request)
-                elif len(article) == 3:
-                    fHandler.appendLINKtoFile(_catalogue_name, article[0] + " " + article[1] + " " + article[2],
-                                              _search_request)
-                else:
-                    fHandler.appendLINKtoFile(_catalogue_name, article[0] + " " + article[1], _search_request)
+            saveArticles(articles)
 
 
 
@@ -302,6 +284,23 @@ def getLINKSbyPage(thread_id, pages):
         driver.quit()
 
     return "ССЫЛКИ ВЫТАЩЕНЫ УСПЕШНО!"
+
+
+def saveArticles(articles):
+    global _search_request, _catalogue_name
+
+    for article in articles:
+        print(f"{article[0]} - найден!")
+
+        if len(article) == 4:
+            fHandler.appendLINKtoFile(_catalogue_name,
+                                      article[0] + " " + article[1] + " " + article[2] + " " + article[3],
+                                      _search_request)
+        elif len(article) == 3:
+            fHandler.appendLINKtoFile(_catalogue_name, article[0] + " " + article[1] + " " + article[2],
+                                      _search_request)
+        else:
+            fHandler.appendLINKtoFile(_catalogue_name, article[0] + " " + article[1], _search_request)
 
 
 def parseLINKS(start_line, end_line, provider, search_request):

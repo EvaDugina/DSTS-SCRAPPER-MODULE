@@ -1,67 +1,312 @@
-import Provider
+import json
+import math
+import time
+import traceback
+import logging
+
+import Mathf as Mathf
+from bs4 import BeautifulSoup
+from selenium.common import WebDriverException, JavascriptException
+from selenium.webdriver.common.by import By
+from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError, Error
+from selenium.webdriver.support.wait import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+
+from PROVIDERS import Provider
+from HANDLERS import FILEHandler as fHandler, JSONHandler as parseJSON, JSONHandler
+from UTILS import strings, parse
+
+def wait_until(return_value, period=1):
+    time.sleep(period)
+    while return_value != 1:
+        time.sleep(period)
+    return False
 
 
-class Fleetguard(Provider):
+class Fleetguard(Provider.Provider):
+    _main_url = "https://www.fleetguard.com/s/?language=en_US"
+    _catalogue_url = "https://www.fleetguard.com/s/searchResults?propertyVal="
+    _article_url = "https://www.fleetguard.com/s/productDetails?language=en_US&propertyVal="
+    _catalogue_name = "FLEETGUARD"
 
-    _catalog_url = "https://shop.donaldson.com/store/ru-ru/search?Ntt="
-    _max_page = 1
+    _articles = []
 
     def __init__(self, producer_id, dbHandler):
-        self._producer_id = producer_id
-        self._producer_name = dbHandler.getProducerById(self._producer_id)
+        super().__init__(producer_id, dbHandler)
+
+    def getMainUrl(self):
+        return self._main_url
+
+    def getProductUrl(self, article_name):
+        return self._article_url + article_name
+
+    def getMaxPage(self):
+        return self.max_page
+
+    def getCatalogueName(self):
+        return self._catalogue_name
+
+    def getSearchUrl(self, article_name):
+        return f"{self._catalogue_url}{article_name}"
+
+
+    def getPageCount(self, driver, search_request):
+        driver.get(self.getSearchUrl(search_request))
+
+        # Прогружаем всю страницу со всеми товарами
+        # https://www.selenium.dev/documentation/webdriver/actions_api/wheel/
+        # https://scrapfly.io/blog/how-to-scroll-to-the-bottom-with-selenium/
+        prev_height = -1
+        scroll_count = 0
+        max_scrolls = 5
+        while scroll_count < max_scrolls:
+            driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+            new_height = driver.execute_script("return document.body.scrollHeight")
+            time.sleep(scroll_count*2)
+            if new_height == prev_height:
+                break
+            prev_height = new_height
+            scroll_count += 1
+
+        #  Ищём товары
+        # https://ru.stackoverflow.com/questions/1331382/selenium-%D0%BD%D0%B5-%D1%83%D0%B4%D0%B0%D0%B5%D1%82%D1%81%D1%8F-%D0%BD%D0%B0%D0%B9%D1%82%D0%B8-%D1%8D%D0%BB%D0%B5%D0%BC%D0%B5%D0%BD%D1%82-python
+        # https://qna.habr.com/q/1248740
+        # https://habr.com/ru/companies/simbirsoft/articles/598407/
+        # https://qna.habr.com/q/706681
+        # https://automated-testing.info/t/selenium-ne-nahodit-element-po-xpath-a-on-est-na-stranicze/28205/3
+        # https://www.selenium.dev/selenium/docs/api/py/webdriver_support/selenium.webdriver.support.expected_conditions.html#selenium.webdriver.support.expected_conditions.presence_of_all_elements_located
+        shadow_host = driver.find_elements(By.TAG_NAME, "c-product-listing-page")[0]
+        shadow_root = shadow_host.shadow_root
+        div_leftPadd = shadow_root.find_elements(By.CLASS_NAME, "Left-Padd")
+        if len(div_leftPadd) < 1:
+            return -1
+        else:
+            div_leftPadd = div_leftPadd[0]
+
+        # Собираем всё, что нашли
+        elements = WebDriverWait(div_leftPadd, 10).until(EC.presence_of_all_elements_located((By.CLASS_NAME, "container_Changed")))
+
+        for element in elements:
+            a = element.find_element(By.CLASS_NAME, "productCode1")
+            article_name = a.text.strip()
+            cross_ref = element.find_elements(By.CLASS_NAME, "crossRef-content")
+            if len(cross_ref) > 0:
+                cross_ref = cross_ref[0]
+                analog_article = cross_ref.find_element(By.CLASS_NAME, "crossRefName").text.strip().split(" ")
+                analog_article_producer_name = ""
+                for i in range(0, len(analog_article) - 1):
+                    analog_article_producer_name += analog_article[i]
+                analog_article_producer_name = analog_article_producer_name.upper()
+                analog_article_name = analog_article[len(analog_article)-1]
+                self._articles.append([article_name, self.getProductUrl(article_name), analog_article_name, analog_article_producer_name])
+            else:
+                self._articles.append([article_name, self.getProductUrl(article_name)])
+
+        return len(elements)
+
+    def endCondition(self, page):
+        if page < self.max_page:
+            return True
+        return False
 
     def search(self, driver, page_number, search_request):
-        # if page_number > 0:
-        #     driver.get(self._catalog_url + search_request + f"No={20*page_number}&")
-        # else:
-        #     driver.get(self._catalog_url + search_request)
-        #     lastButton = driver.find_elements(By.CLASS_NAME, "lastButton")
-        #     if len(lastButton) > 0:
-        #         self._max_page = int(lastButton[0].find_elements(By.TAG_NAME, "a")[0]
-        #                              .get_attribute("innerHTML"))
+        return True
+
+    def parseSearchResult(self, driver, pageNumber=None):
+        return self._articles
+
+    def loadArticlePage(self, driver, article_url, search_type=False):
+        try:
+            driver.get(article_url)
+        except WebDriverException:
+            return False
         return driver
 
-    def endCondision(self, page):
-        # if page < self._max_page:
-            return True
-        # return False
+    def getArticleType(self, driver) -> str:
+        shadow_root = driver.find_element(By.TAG_NAME, "c-product-detail-page").shadow_root
+        type = shadow_root.find_element(By.CLASS_NAME, "productDetails").find_elements(By.TAG_NAME, "h2")[0].text
+        return type
+
+    def parseCrossReference(self, main_article_name, producer_name, type, cross_ref):
+        main_producer_id = self._dbHandler.insertProducer(producer_name, self._catalogue_name)
+        fHandler.appendToFileLog("----> PRODUCER_ID: " + str(main_producer_id))
+        main_article_id = self._dbHandler.insertArticle(main_article_name, main_producer_id, self._catalogue_name)
+        for elem in cross_ref:
+            producer_name = elem['producerName']
+            fHandler.appendToFileLog("\t--> PRODUCER_NAME: " + str(producer_name))
+            producer_id = self._dbHandler.insertProducer(producer_name, self._catalogue_name)
+            analog_article_names = elem['articleNames']
+            analog_article_ids = []
+            for article_name in analog_article_names:
+                if elem['type'] == "old":
+                    analog_article_id = self._dbHandler.insertArticle(article_name, producer_id, self._catalogue_name,
+                                                                      1)
+                else:
+                    analog_article_id = self._dbHandler.insertArticle(article_name, producer_id, self._catalogue_name)
+                analog_article_ids.append(analog_article_id)
+            self._dbHandler.insertArticleAnalogs(main_article_id, analog_article_ids, self._catalogue_name)
+
+    def parseCrossReferenceResult(self, driver, pageNumber):
+        pass
+
+    def setInfo(self, article_name, producer_name, info_json):
+        producer_id = self._dbHandler.getProducerIdByNameAndCatalogueName(producer_name, self._catalogue_name)
+        article_id = self._dbHandler.getArticleByName(article_name, producer_id)[0]
+
+        main_info = info_json['articleMainInfo']
+        secondary_info = info_json['articleSecondaryInfo']
+        output_json = {**main_info, **secondary_info}
+
+        self._dbHandler.insertCharacteristics(main_info)
+
+        type = info_json['articleDescription']
+        url = f"{self._article_url}{article_name}/{info_json['articleSecondaryInfo']['articleId']}"
+
+        self._dbHandler.insertArticleInfo(article_id, self._catalogue_name, url, type, output_json)
+
+    def saveJSON(self, driver, article_url, article_name, description, search_request, analog_article_name, analog_producer_name):
+
+        print("saveJSON():")
+
+        flag_replaced = False
+        flag_replace = False
+        replaced_article_names = []
+        replace_article_names = []
+        article_type = "real"
+
+        shadow_root = driver.find_element(By.TAG_NAME, "c-product-detail-page").shadow_root
+        obsolente = shadow_root.find_elements(By.CLASS_NAME, "ObsoleteClass")
+        if len(obsolente) > 0:
+            flag_replaced = True
+            article_type = "old"
+            els = shadow_root.find_elements(By.CLASS_NAME, "parts")
+            replaced_by = None
+            for el in els:
+                if el.text == "Replaced By":
+                    replaced_by = el
+            if replaced_by is not None:
+                next_sibling_js = driver.execute_script("return arguments[0].nextElementSibling;", replaced_by)
+                replaced_by_articles = next_sibling_js.find_elements(By.CLASS_NAME, "relatedItem")
+                for article in replaced_by_articles:
+                    replaced_article_names.append(article.text)
+        else:
+            els = shadow_root.find_elements(By.CLASS_NAME, "parts")
+            replaces = None
+            for el in els:
+                if el.text == "Replaces":
+                    replaces = el
+            if replaces is not None:
+                flag_replace = True
+                next_sibling_js = driver.execute_script("return arguments[0].nextElementSibling;", replaces)
+                replaces_articles = next_sibling_js.find_elements(By.CLASS_NAME, "relatedItem")
+                for article in replaces_articles:
+                    replace_article_names.append(article.text)
+
+        cross_reference = []
+        buttons = shadow_root.find_elements(By.CLASS_NAME, "tablinks")
+        for button in buttons:
+            if button.text == "OEM Cross Reference":
+                button.click()
+                time.sleep(1)
+                tab = shadow_root.find_element(By.CLASS_NAME, "tabcontent")
+                rows_analogs = tab.find_elements(By.CLASS_NAME, "Related_Parts_Class")
+                for row in rows_analogs:
+                    analog_producer_name1 = row.find_element(By.CLASS_NAME, "parts").get_attribute("innerHTML").strip()
+                    analog_article_names = []
+                    div_article_names = row.find_element(By.CLASS_NAME, "three_Part_Grid")\
+                        .find_elements(By.CLASS_NAME, "parts")
+                    for div in div_article_names:
+                        analog_article_names.append(div.get_attribute("data-item").replace(" ", ""))
+                    analogs = {
+                        "producerName": analog_producer_name1,
+                        "articleNames": analog_article_names,
+                        "type": "real"
+                    }
+                    cross_reference.append(analogs)
+
+        # Получаем характеристики
+        self._article_info_json['articleMainInfo'] = {}
+        div_characteristics = shadow_root.find_elements(By.CLASS_NAME, "tableCls")
+        if len(div_characteristics) > 0:
+            tables = div_characteristics[0].find_elements(By.TAG_NAME, "table")
+            for table in tables:
+                trs = table.find_elements(By.TAG_NAME, "tr")
+                for tr in trs:
+                    tds = tr.find_elements(By.TAG_NAME, "td")
+                    name = tds[0].text
+                    value = tds[1].text
+                    self._article_info_json['articleMainInfo'][name] = f"{value}"
+
+        # Получаем изображение
+        imageURLS = []
+        image = shadow_root.find_element(By.CLASS_NAME, "imgfluid")
+        imageURLS.append(image.get_attribute("src"))
+
+        self._article_cross_ref_json['crossReference'] = cross_reference
+
+        self._article_info_json['articleSecondaryInfo'] = {
+            "articleId": article_name,
+            "imageUrls": imageURLS
+        }
+
+        type_json = dict([("articleDescription", description)])
+
+        # Склеиваем информацию в один JSON
+        article_info_json = {**self._article_cross_ref_json, **self._article_info_json}
+        article_info_json = {**article_info_json, **type_json}
+
+        # Отправляем на генерацию полного JSON
+        article_json = parseJSON.generateArticleJSON(article_name, self._catalogue_name, self._catalogue_name,
+                                                     article_info_json, article_type)
+        article_json = self.addAnalogToJSON(analog_article_name, analog_producer_name, article_json)
+
+        if flag_replaced:
+            article_json = JSONHandler.appendAnalogsToJSON(article_json, replaced_article_names, self._catalogue_name)
+        if flag_replace:
+            article_json = JSONHandler.appendOldAnalogsToJSON(article_json, replace_article_names, self._catalogue_name)
+
+        # fHandler.appendJSONToFile("DONALDSON", article_json, search_request)
+        fHandler.appendToFileLog("\tappendToFile() -> completed")
+        fHandler.appendToFileLog("saveJSON() -> completed")
+
+        return article_json
+
+    with sync_playwright() as p:
+        def handle_response(self, response):
+            if len(self._article_cross_ref_json) < 1:
+                if "fetchproductcrossreflist?" in response.url:
+                    try:
+                        if 'crossReferenceList' in response.json():
+                            self._article_cross_ref_json['crossReference'] = response.json()['crossReferenceList']
+                            fHandler.appendToFileLog("\t_article_cross_ref_json -> НАЙДЕН!")
+                    except Error:
+                        pass
+
+            if len(self._article_info_json) < 1:
+                if "fetchProductAttrAndRecentlyViewed?" in response.url:
+                    article_info_characteristic = dict()
+                    article_info_else = dict()
+                    try:
+                        if 'productAttributesResponse' in response.json():
+                            article_info_characteristic['productMainInfo'] = response.json()['productAttributesResponse'][
+                                'dynamicAttributes']
+                        if 'recentlyViewedProductResponse' in response.json():
+                            article_info_else['productSecondaryInfo'] = \
+                                response.json()['recentlyViewedProductResponse']['recentlyViewedProducts'][0]
+                        self._article_info_json = {**article_info_characteristic, **article_info_else}
+                        fHandler.appendToFileLog("\t_article_info_json -> НАЙДЕН!")
+                    except Error:
+                        pass
+
+    def addAnalogToJSON(self, analog_article_name, analog_producer_name, json):
+        if analog_article_name != "" and analog_producer_name != "":
+            return JSONHandler.appendAnalogToJSON(json, analog_article_name, analog_producer_name)
+        elif analog_article_name != "":
+            return JSONHandler.appendOldAnalogToJSON(json, analog_article_name, self._catalogue_name)
+        return json
 
 
-    def parseSearchResult(self, driver):
-        # elements = driver.find_elements(By.CLASS_NAME, "donaldson-part-details")
-        # articles = []
-        # for index, elem in enumerate(elements, start=0):
-        #     if index % 2 == 0:
-        #         spans = elem.find_elements(By.TAG_NAME, "span")
-        #         articles.append([spans[0].get_attribute("innerHTML"), elem.get_attribute("href")])
-        # return articles
-        return ""
-
-    def parseCrossReference(self, driver, article_id):
-        # driver.execute_script("document.getElementById(\"showAllCrossReferenceListButton\").click();" +
-        #                       "let blocks = document.getElementsByClassName(\"searchCrossRef\");" +
-        #                       "for(let i = 0; i < blocks.length; i++){" +
-        #                       "blocks[i].style.display = \"unset\";" +
-        #                       "blocks[i].parentElement.className = \"\";" +
-        #                       "let tag_i = blocks[i].getElementsByTagName(\"i\");" +
-        #                       "if(tag_i.length > 0)" +
-        #                       "tag_i[0].click();" +
-        #                       "}")
-        #
-        # elements = driver.find_elements(By.CLASS_NAME, "searchCrossRef")
-        # analog_producer_name = ""
-        # analog_producer_id = -1
-        # analogs = []
-        # for index, elem in enumerate(elements, start=0):
-        #     if index % 3 == 0:
-        #         if elem.text != analog_producer_name:
-        #             analog_producer_id = db.insertProducer(analog_producer_name)
-        #             if len(analogs) > 0:
-        #                 db.insertArticleAnalogs(article_id, analogs)
-        #                 analogs = []
-        #             analog_producer_name = elem.text
-        #     elif index % 3 == 1:
-        #         analog_article_name = elem.text
-        #         analog_article_id = db.insertArticle(analog_article_name, analog_producer_id)
-        #         analogs.append(analog_article_id)
-        return ""
+def goBack(self, driver):
+    executing_return = driver.execute_script("window.history.back(); return 1;")
+    wait_until(int(executing_return), 2)
+    return driver

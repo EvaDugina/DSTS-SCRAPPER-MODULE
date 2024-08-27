@@ -27,37 +27,37 @@ def generateArticleJSON(article_name, catalogue_name, producer_name, article_inf
     # print(article_json)
     return article_json
 
-def generateItemCrossRefJSON(producer_name, article_id, type):
+def generateItemCrossRefJSON(producer_name, article_ids, type):
     item_cross_ref = {
         "producerName": f"{producer_name}",
-        "articleNames": [f"{article_id}"],
+        "articleNames": [],
         "type": type
     }
+    for article_id in article_ids:
+        item_cross_ref["articleNames"].append(article_id)
     return item_cross_ref
 
 def appendOldAnalogToJSON(article_json, article_name, producer_name):
     article_json = json.loads(article_json)
-    article_json['info']['crossReference'].append(generateItemCrossRefJSON(producer_name, article_name, "old"))
+    article_json['info']['crossReference'].append(generateItemCrossRefJSON(producer_name, [article_name], "old"))
     article_json = json.dumps(article_json)
     return article_json
 
 def appendOldAnalogsToJSON(article_json, article_names, producer_name):
     article_json = json.loads(article_json)
-    for article_name in article_names:
-        article_json['info']['crossReference'].append(generateItemCrossRefJSON(producer_name, article_name, "old"))
+    article_json['info']['crossReference'].append(generateItemCrossRefJSON(producer_name, article_names, "old"))
     article_json = json.dumps(article_json)
     return article_json
 
 def appendAnalogToJSON(article_json, article_name, producer_name):
     article_json = json.loads(article_json)
-    article_json['info']['crossReference'].append(generateItemCrossRefJSON(producer_name, article_name, "real"))
+    article_json['info']['crossReference'].append(generateItemCrossRefJSON(producer_name, [article_name], "real"))
     article_json = json.dumps(article_json)
     return article_json
 
 def appendAnalogsToJSON(article_json, article_names, producer_name):
     article_json = json.loads(article_json)
-    for article_name in article_names:
-        article_json['info']['crossReference'].append(generateItemCrossRefJSON(producer_name, article_name, "real"))
+    article_json['info']['crossReference'].append(generateItemCrossRefJSON(producer_name, article_names, "real"))
     article_json = json.dumps(article_json)
     return article_json
 

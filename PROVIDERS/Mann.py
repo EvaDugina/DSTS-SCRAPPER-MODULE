@@ -207,8 +207,8 @@ class Mann(Provider.Provider):
         div_elements = driver.find_elements(By.CLASS_NAME, "cmp-table-data__row")
         for row in div_elements:
             cells = row.find_elements(By.CLASS_NAME, "cmp-table-data__cell")
-            analog_article_name = cells[0].find_element(By.CLASS_NAME, "cmp-text__paragraph").text
-            analog_producer_name = cells[1].find_element(By.CLASS_NAME, "cmp-text__paragraph").text
+            analog_article_name = cells[0].find_element(By.CLASS_NAME, "cmp-text__paragraph").text.replace(" ", "").upper()
+            analog_producer_name = cells[1].find_element(By.CLASS_NAME, "cmp-text__paragraph").text.replace(" ", "").upper()
             article_name = cells[2].find_element(By.CLASS_NAME, "cmp-text__paragraph").text.replace(" ", "").upper()
             if article_name == "нет аналога".replace(" ", "").upper():
                 continue
@@ -315,7 +315,7 @@ class Mann(Provider.Provider):
             analog_article_names = []
             lis_article_names = row.find_element(By.TAG_NAME, "ul").find_elements(By.TAG_NAME, "li")
             for li in lis_article_names:
-                analog_article_names.append(li.get_attribute("innerHTML"))
+                analog_article_names.append(li.get_attribute("innerHTML").replace(" ", ""))
             analogs = {
                 "producerName": analog_producer_name1,
                 "articleNames": analog_article_names,

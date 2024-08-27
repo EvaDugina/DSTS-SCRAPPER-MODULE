@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 import logging
 
@@ -22,7 +24,7 @@ Providers = [
     {
         "name": "FLEETGUARD",
         "code": 3,
-        "active": False
+        "active": True
     },
     {
         "name": "SF",
@@ -65,9 +67,9 @@ class ProviderHandler:
         elif provider_name == "MANN":
             from PROVIDERS.Mann import Mann
             return lambda producer_id, dbHandler: Mann(producer_id, dbHandler)
-        # elif provider_name == "FLEETGUARD":
-        #     from PROVIDERS.Fleetguard import Fleetguard
-        #     return lambda producer_id, dbHandler: Fleetguard(producer_id, dbHandler)
+        elif provider_name == "FLEETGUARD":
+            from PROVIDERS.Fleetguard import Fleetguard
+            return lambda producer_id, dbHandler: Fleetguard(producer_id, dbHandler)
         # elif provider_name == "SF":
         #     from PROVIDERS.SF import SF
         #     return lambda producer_id, dbHandler: SF(producer_id, dbHandler)
