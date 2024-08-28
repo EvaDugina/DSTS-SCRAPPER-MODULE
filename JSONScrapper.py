@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+
 # https://peps.python.org/pep-0263/
 import Decorators
 from HANDLERS import WEBHandler as wHandler

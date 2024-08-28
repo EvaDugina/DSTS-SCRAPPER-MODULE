@@ -1,21 +1,20 @@
 import json
-import logging
 import time
 
-from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError, Error
-from selenium.common import WebDriverException, JavascriptException
+import gevent
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError, Error
+from selenium.common import WebDriverException
 from selenium.webdriver.common.by import By
 
 from PROVIDERS import Provider
-from HANDLERS import FILEHandler as fHandler, JSONHandler as parseJSON, JSONHandler
+from HANDLERS import FILEHandler as fHandler, JSONHandler as parseJSON, JSONHandler, PLAYWRIGHTHandler
 
-logging.getLogger().setLevel(logging.INFO)
-
+PLAYWRIGHT = PLAYWRIGHTHandler.PLAYWRIGHT
 
 def wait_until(return_value, period=0.5):
-    time.sleep(period)
+    gevent.sleep(period)
     while return_value != 1:
-        time.sleep(period)
+        gevent.sleep(period)
     return False
 
 
@@ -27,8 +26,11 @@ class FilFilter(Provider.Provider):
     _max_page = 1
     _dbHandler = None
 
+    _playwright = None
+
     def __init__(self, producer_id, dbHandler):
         super().__init__(producer_id, dbHandler)
+        self._playwright = PLAYWRIGHT
 
     def getMainUrl(self):
         return self._main_url
@@ -52,31 +54,6 @@ class FilFilter(Provider.Provider):
                 return -1
         else:
             return -1
-
-        # executing_return = driver.execute_script("let pageButton = document.getElementById(\"select_6\");"
-        #                                          "if (pageButton) {"
-        #                                          "pageButton.click();"
-        #                                          "let select_arrayCountByPage = document.getElementById(pageButton.getAttribute(\"aria-owns\"));"
-        #                                          "let aa = select_arrayCountByPage.firstChild.firstChild;"
-        #                                          "let button_countByPage = aa.children[aa.children.length-1];"
-        #                                          "document.getElementById(button_countByPage.getAttribute(\"id\")).click();"
-        #                                          "document.getElementById(\"select_3\").click();"
-        #                                          "return 1;"
-        #                                          "} else return 0;")
-        # wait_until(int(executing_return))
-
-        # try:
-        #     buttonPages = driver.find_elements(By.ID, "select_3")
-        #     if buttonPages:
-        #         selectElement = driver.find_elements(By.ID, buttonPages[0].get_attribute("aria-owns"))
-        #         lastchildren = selectElement[0].find_elements(By.CSS_SELECTOR, "*")[
-        #             0].find_elements(By.CSS_SELECTOR, "*")[0].find_elements(By.TAG_NAME, "md-option")
-        #         count = len(lastchildren)
-        #         self._max_page = int(lastchildren[count - 1].get_attribute("value"))
-        #         return self._max_page
-        # except JavascriptException or IndexError:
-        #     return strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE
-        # return -1
 
     def endCondition(self, page):
         if page < self._max_page:
@@ -181,95 +158,111 @@ class FilFilter(Provider.Provider):
 
         fHandler.appendToFileLog("saveJSON():")
 
-        with sync_playwright() as p:
+        # Получаем Cross-Ref & Type
+        index = 0
+        limit_check = 4
+        _article_info_json = {}
+        _article_cross_ref_json = {}
 
-            # Получаем Cross-Ref & Type
-            index = 0
-            limit_check = 4
-            self._article_info_json = {}
-            self._article_cross_ref_json = {}
-            browser = p.chromium.launch()
-            page = browser.new_page()
-            while len(self._article_cross_ref_json) == 0 and index < limit_check:
+        def handle_response(response):
+            if len(_article_cross_ref_json) > 0:
+                return None
+
+            if "get_product_oe_references" in response.url:
                 try:
-                    # page.set_default_timeout(5000)
-                    page.on("response", self.handle_response)
-                    page.goto(article_url, wait_until="networkidle")
+                    if 'retval' in response.json():
+                        retval = response.json()['retval']
+                        if retval:
+                            _article_cross_ref_json['crossReference'] = retval['references']
+                        fHandler.appendToFileLog("\t_article_cross_ref_json -> НАЙДЕН!")
+                    else:
+                        return None
                 except PlaywrightTimeoutError:
                     fHandler.appendToFileLog("PlaywrightTimeoutError!")
-                if index == limit_check - 2:
-                    page.wait_for_timeout(2000)
-                index += 1
-            page.context.close()
-            browser.close()
+                except Error:
+                    pass
 
-            flag_replaced = False
-            flag_replace = False
-            replaced_article_names = []
-            replace_article_names = []
-            article_type = "real"
-            if len(driver.find_elements(By.CLASS_NAME, "product-link")) > 0:
-                status = driver.find_element(By.CLASS_NAME, "product-link") \
-                    .find_element(By.XPATH, '..') \
-                    .find_element(By.XPATH, "preceding-sibling::*[1]") \
-                    .find_element(By.TAG_NAME, "b") \
-                    .get_attribute("innerHTML")
-                status = status.split(" ")[0].upper()
-                if status == "ЗАМЕНЕНО":
-                    flag_replace = True
-                    replace_article_names.append(driver.find_element(By.CLASS_NAME, "product-link").get_attribute(
-                        "innerHTML"))
-                    article_type = "real"
-                elif status == "ЗАМЕНА":
-                    flag_replaced = True
-                    replaced_article_names.append(driver.find_element(By.CLASS_NAME, "product-link").get_attribute(
-                        "innerHTML"))
-                    article_type = "old"
+        browser = self._playwright.chromium.launch()
+        page = browser.new_page()
+        while len(_article_cross_ref_json) == 0 and index < limit_check:
+            try:
+                # page.set_default_timeout(5000)
+                page.on("response", handle_response)
+                page.goto(article_url, wait_until="networkidle")
+            except PlaywrightTimeoutError:
+                fHandler.appendToFileLog("PlaywrightTimeoutError!")
+            if index == limit_check - 2:
+                page.wait_for_timeout(2000)
+            index += 1
+        page.context.close()
+        browser.close()
 
-            elif driver.find_elements(By.CLASS_NAME, "flex-40")[
-                len(driver.find_elements(By.CLASS_NAME, "flex-40")) - 1] \
-                    .get_attribute("innerHTML") == "не поставляется":
+        flag_replaced = False
+        flag_replace = False
+        replaced_article_names = []
+        replace_article_names = []
+        article_type = "real"
+        if len(driver.find_elements(By.CLASS_NAME, "product-link")) > 0:
+            status = driver.find_element(By.CLASS_NAME, "product-link") \
+                .find_element(By.XPATH, '..') \
+                .find_element(By.XPATH, "preceding-sibling::*[1]") \
+                .find_element(By.TAG_NAME, "b") \
+                .get_attribute("innerHTML")
+            status = status.split(" ")[0].upper()
+            if status == "ЗАМЕНЕНО":
+                flag_replace = True
+                replace_article_names.append(driver.find_element(By.CLASS_NAME, "product-link").get_attribute(
+                    "innerHTML"))
+                article_type = "real"
+            elif status == "ЗАМЕНА":
+                flag_replaced = True
+                replaced_article_names.append(driver.find_element(By.CLASS_NAME, "product-link").get_attribute(
+                    "innerHTML"))
                 article_type = "old"
 
-            # Получаем характеристики
-            self._article_info_json['articleMainInfo'] = {}
-            if len(driver.find_elements(By.CLASS_NAME, "vehicle-details")) > 1:
-                md_list_item_characteristics = driver.find_elements(By.CLASS_NAME, "vehicle-details")[1]
-                md_list_item_characteristics = md_list_item_characteristics.find_elements(By.CLASS_NAME, "md-no-proxy")
-                md_list_item_characteristics.pop(0)
-                index = 0
-                for md_item_characteristic in md_list_item_characteristics:
-                    characteristic_name = md_item_characteristic.find_element(By.CLASS_NAME, "flex-60") \
-                        .find_element(By.TAG_NAME, "b").get_attribute("innerHTML")
-                    if index == 0:
-                        characteristic_name = characteristic_name.split(":")[0].strip()
-                    characteristic_value = md_item_characteristic.find_element(By.CLASS_NAME, "flex-40") \
-                        .get_attribute("innerHTML")
-                    if characteristic_name == "Товарная группа":
-                        description = characteristic_value
-                    self._article_info_json['articleMainInfo'][characteristic_name] = f"{characteristic_value}"
-                    index += 1
-            # Получаем изображение
-            imageURLS = []
-            if len(driver.find_elements(By.CLASS_NAME, "md-card-image")) > 0:
-                imageURLS.append(driver.find_element(By.CLASS_NAME, "md-card-image").get_attribute("src"))
+        elif driver.find_elements(By.CLASS_NAME, "flex-40")[
+            len(driver.find_elements(By.CLASS_NAME, "flex-40")) - 1] \
+                .get_attribute("innerHTML") == "не поставляется":
+            article_type = "old"
 
-            # Проверяем, что нашли
-            if len(self._article_cross_ref_json) == 0:
-                fHandler.appendToFileLog("\t_article_cross_ref_json is empty()")
-                self._article_cross_ref_json['crossReference'] = []
+        # Получаем характеристики
+        _article_info_json['articleMainInfo'] = {}
+        if len(driver.find_elements(By.CLASS_NAME, "vehicle-details")) > 1:
+            md_list_item_characteristics = driver.find_elements(By.CLASS_NAME, "vehicle-details")[1]
+            md_list_item_characteristics = md_list_item_characteristics.find_elements(By.CLASS_NAME, "md-no-proxy")
+            md_list_item_characteristics.pop(0)
+            index = 0
+            for md_item_characteristic in md_list_item_characteristics:
+                characteristic_name = md_item_characteristic.find_element(By.CLASS_NAME, "flex-60") \
+                    .find_element(By.TAG_NAME, "b").get_attribute("innerHTML")
+                if index == 0:
+                    characteristic_name = characteristic_name.split(":")[0].strip()
+                characteristic_value = md_item_characteristic.find_element(By.CLASS_NAME, "flex-40") \
+                    .get_attribute("innerHTML")
+                if characteristic_name == "Товарная группа":
+                    description = characteristic_value
+                _article_info_json['articleMainInfo'][characteristic_name] = f"{characteristic_value}"
+                index += 1
+        # Получаем изображение
+        imageURLS = []
+        if len(driver.find_elements(By.CLASS_NAME, "md-card-image")) > 0:
+            imageURLS.append(driver.find_element(By.CLASS_NAME, "md-card-image").get_attribute("src"))
 
-            # Приводим Cross Ref JSON к нужному формату
-            cross_ref_json = []
-            previous_producer_name = ""
-            new_json = {}
-            id = 0
+        # Проверяем, что нашли
+        if len(_article_cross_ref_json) == 0:
+            fHandler.appendToFileLog("\t_article_cross_ref_json is empty()")
+            _article_cross_ref_json['crossReference'] = []
+        else:
+            _article_cross_ref_json['crossReference'] = sorted(_article_cross_ref_json['crossReference'],
+                                                               key=lambda elem: elem['manufacturer_name'])
+
+        # Приводим Cross Ref JSON к нужному формату
+        cross_ref_json = []
+        previous_producer_name = ""
+        new_json = {}
+        id = 0
+        for elem in _article_cross_ref_json['crossReference']:
             try:
-                self._article_cross_ref_json['crossReference'] = sorted(self._article_cross_ref_json['crossReference'],
-                                                                        key=lambda elem: elem['manufacturer_name'])
-            except Error:
-                pass
-            for elem in self._article_cross_ref_json['crossReference']:
                 if elem['manufacturer_name'] != previous_producer_name:
                     if id != 0:
                         cross_ref_json.append(new_json)
@@ -284,59 +277,43 @@ class FilFilter(Provider.Provider):
                     previous_producer_name = elem['manufacturer_name']
                 else:
                     new_json['articleNames'].append(elem['RefNo'])
-                id += 1
-            if new_json != {}:
-                cross_ref_json.append(new_json)
+            except KeyError:
+                print("ELEM:", elem)
+            id += 1
+        if new_json != {}:
+            cross_ref_json.append(new_json)
 
-            self._article_cross_ref_json['crossReference'] = cross_ref_json
+        _article_cross_ref_json['crossReference'] = cross_ref_json
 
-            self._article_info_json['articleSecondaryInfo'] = {
-                "articleId": article_url.split("/")[len(article_url.split("/")) - 1],
-                "imageUrls": imageURLS
-            }
+        _article_info_json['articleSecondaryInfo'] = {
+            "articleId": article_url.split("/")[len(article_url.split("/")) - 1],
+            "imageUrls": imageURLS
+        }
 
-            type_json = dict([("articleDescription", description)])
+        type_json = dict([("articleDescription", description)])
 
-            # Склеиваем информацию в один JSON
-            article_info_json = {**self._article_cross_ref_json, **self._article_info_json}
-            article_info_json = {**article_info_json, **type_json}
+        # Склеиваем информацию в один JSON
+        article_info_json = {**_article_cross_ref_json, **_article_info_json}
+        article_info_json = {**article_info_json, **type_json}
 
-            # Отправляем на генерацию полного JSON
-            article_json = parseJSON.generateArticleJSON(article_name, self._catalogue_name, self._catalogue_name,
-                                                         article_info_json, article_type)
-            article_json = self.addAnalogToJSON(analog_article_name, analog_producer_name, article_json)
+        # Отправляем на генерацию полного JSON
+        article_json = parseJSON.generateArticleJSON(article_name, self._catalogue_name, self._catalogue_name,
+                                                     article_info_json, article_type)
+        article_json = self.addAnalogToJSON(analog_article_name, analog_producer_name, article_json)
 
-            if flag_replaced:
-                article_json = JSONHandler.appendAnalogsToJSON(article_json, replaced_article_names,
-                                                               self._catalogue_name)
-            if flag_replace:
-                article_json = JSONHandler.appendOldAnalogsToJSON(article_json, replace_article_names,
-                                                                  self._catalogue_name)
+        if flag_replaced:
+            article_json = JSONHandler.appendAnalogsToJSON(article_json, replaced_article_names,
+                                                           self._catalogue_name)
+        if flag_replace:
+            article_json = JSONHandler.appendOldAnalogsToJSON(article_json, replace_article_names,
+                                                              self._catalogue_name)
 
-            # fHandler.appendJSONToFile("DONALDSON", article_json, search_request)
-            fHandler.appendToFileLog("\tappendToFile() -> completed")
-            fHandler.appendToFileLog("saveJSON() -> completed")
+        # fHandler.appendJSONToFile("DONALDSON", article_json, search_request)
+        fHandler.appendToFileLog("\tappendToFile() -> completed")
+        fHandler.appendToFileLog("saveJSON() -> completed")
 
-            return article_json
+        return article_json
 
-    with sync_playwright() as p:
-        def handle_response(self, response):
-            if len(self._article_cross_ref_json) > 0:
-                return None
-
-            if "get_product_oe_references" in response.url:
-                try:
-                    if 'retval' in response.json():
-                        retval = response.json()['retval']
-                        if retval:
-                            self._article_cross_ref_json['crossReference'] = retval['references']
-                        fHandler.appendToFileLog("\t_article_cross_ref_json -> НАЙДЕН!")
-                    else:
-                        return None
-                except PlaywrightTimeoutError:
-                    fHandler.appendToFileLog("PlaywrightTimeoutError!")
-                except Error:
-                    pass
 
     def addAnalogToJSON(self, analog_article_name, analog_producer_name, json):
         if analog_article_name != "" and analog_producer_name != "":
@@ -344,8 +321,3 @@ class FilFilter(Provider.Provider):
         elif analog_article_name != "":
             return JSONHandler.appendOldAnalogToJSON(json, analog_article_name, self._catalogue_name)
         return json
-
-    def goBack(self, driver):
-        executing_return = driver.execute_script("window.history.back(); return 1;")
-        wait_until(int(executing_return), 2)
-        return driver

@@ -1,18 +1,16 @@
-import json
 import time
-import traceback
-import logging
 
 from bs4 import BeautifulSoup
 from selenium.common import WebDriverException, JavascriptException
 from selenium.webdriver.common.by import By
-from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError, Error
-from selenium.webdriver.support.wait import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError, Error
 
 from PROVIDERS import Provider
-from HANDLERS import FILEHandler as fHandler, JSONHandler as parseJSON, JSONHandler
+from HANDLERS import FILEHandler as fHandler, JSONHandler as parseJSON, JSONHandler, PLAYWRIGHTHandler
 from UTILS import strings, parse
+
+
+PLAYWRIGHT = PLAYWRIGHTHandler.PLAYWRIGHT
 
 def wait_until(return_value, period=1):
     time.sleep(period)
@@ -29,6 +27,7 @@ class Donaldson(Provider.Provider):
 
     def __init__(self, producer_id, dbHandler):
         super().__init__(producer_id, dbHandler)
+        self._playwright = PLAYWRIGHT
 
     def getMainUrl(self):
         return self._main_url
@@ -175,110 +174,117 @@ class Donaldson(Provider.Provider):
 
         fHandler.appendToFileLog("saveJSON():")
 
-        with sync_playwright() as p:
+        # Получаем Cross-Ref & Characteristics & Type
+        index = 0
+        limit_check = 4
 
-            # Получаем Cross-Ref & Characteristics & Type
-            index = 0
-            limit_check = 4
-            self._article_info_json = {}
-            self._article_cross_ref_json = {}
-            browser = p.chromium.launch()
-            page = browser.new_page()
-            while (len(self._article_info_json) == 0 or len(self._article_cross_ref_json) == 0) and index < limit_check:
-                try:
-                    # page.set_default_timeout(5000)
-                    page.on("response", self.handle_response)
-                    page.goto(article_url, wait_until="networkidle")
-                except PlaywrightTimeoutError:
-                    fHandler.appendToFileLog("PlaywrightTimeoutError!")
-                index += 1
-            page.context.close()
-            browser.close()
+        data = {}
+        data["cross_ref"] = {}
+        data["info_json"] = {}
 
-            # Проверяем, что нашли
-            if len(self._article_info_json) == 0:
-                logging.info("\t_article_info_json is empty()")
-                self._article_info_json['articleMainInfo'] = {}
-                self._article_info_json['articleSecondaryInfo'] = {}
-            if len(self._article_cross_ref_json) == 0:
-                fHandler.appendToFileLog("\t_article_cross_ref_json is empty()")
-                self._article_cross_ref_json['crossReference'] = []
-            # print("\tJSONs получены!")
+        def handle_response(response):
 
-            # Приводим JSONS к нужному формату
-            cross_ref_json = []
-            for elem in self._article_cross_ref_json['crossReference']:
-                new_json = {
-                    "producerName": elem['manufactureName'],
-                    "articleNames": elem['manufacturePartNumber'],
-                    "type": "real"
-                }
-                cross_ref_json.append(new_json)
-            self._article_cross_ref_json['crossReference'] = cross_ref_json
-
-            if 'productMainInfo' in self._article_info_json:
-                self._article_info_json['articleMainInfo'] = self._article_info_json['productMainInfo']
-                self._article_info_json.pop('productMainInfo')
-            else:
-                self._article_info_json['articleMainInfo'] = []
-
-            if 'productSecondaryInfo' in self._article_info_json:
-                self._article_info_json['articleSecondaryInfo'] = {
-                    "articleId": self._article_info_json['productSecondaryInfo']['productId'],
-                    "imageUrls": [self._article_info_json['productSecondaryInfo']['imageUrl']]
-                }
-                self._article_info_json.pop('productSecondaryInfo')
-            else:
-                self._article_info_json['articleSecondaryInfo'] = {
-                    "articleId": -1,
-                    "imageUrls": []
-                }
-
-            type_json = dict([("articleDescription", type)])
-
-            # Склеиваем информацию в один JSON
-            article_info_json = {**self._article_cross_ref_json, **self._article_info_json}
-            article_info_json = {**article_info_json, **type_json}
-
-            # Отправляем на генерацию полного JSON
-            article_json = parseJSON.generateArticleJSON(article_name, self._catalogue_name, self._catalogue_name,
-                                                         article_info_json)
-            article_json = self.addAnalogToJSON(analog_article_name, analog_producer_name, article_json)
-
-            # print("\tgenerateArticleJSON() -> completed")
-
-            # fHandler.appendJSONToFile("DONALDSON", article_json, search_request)
-            fHandler.appendToFileLog("\tappendToFile() -> completed")
-            fHandler.appendToFileLog("saveJSON() -> completed")
-
-            return article_json
-
-    with sync_playwright() as p:
-        def handle_response(self, response):
-            if len(self._article_cross_ref_json) < 1:
+            if len(data["cross_ref"]) < 1:
                 if "fetchproductcrossreflist?" in response.url:
                     try:
                         if 'crossReferenceList' in response.json():
-                            self._article_cross_ref_json['crossReference'] = response.json()['crossReferenceList']
+                            data['cross_ref'] = response.json()[
+                                'crossReferenceList']
                             fHandler.appendToFileLog("\t_article_cross_ref_json -> НАЙДЕН!")
                     except Error:
                         pass
 
-            if len(self._article_info_json) < 1:
+            if len(data["info_json"]) < 1:
                 if "fetchProductAttrAndRecentlyViewed?" in response.url:
                     article_info_characteristic = dict()
                     article_info_else = dict()
                     try:
                         if 'productAttributesResponse' in response.json():
-                            article_info_characteristic['productMainInfo'] = response.json()['productAttributesResponse'][
-                                'dynamicAttributes']
+                            article_info_characteristic['productMainInfo'] = \
+                                response.json()['productAttributesResponse'][
+                                    'dynamicAttributes']
                         if 'recentlyViewedProductResponse' in response.json():
                             article_info_else['productSecondaryInfo'] = \
                                 response.json()['recentlyViewedProductResponse']['recentlyViewedProducts'][0]
-                        self._article_info_json = {**article_info_characteristic, **article_info_else}
+                        data["info_json"] = {**article_info_characteristic, **article_info_else}
                         fHandler.appendToFileLog("\t_article_info_json -> НАЙДЕН!")
                     except Error:
                         pass
+
+        browser = self._playwright.chromium.launch()
+        page = browser.new_page()
+        while (len(data["cross_ref"]) == 0 or len(data["info_json"]) == 0) and index < limit_check:
+            # page.set_default_timeout(5000)
+            try:
+                page.on("response", handle_response)
+                page.goto(article_url, wait_until="networkidle")
+            except PlaywrightTimeoutError:
+                fHandler.appendToFileLog("PlaywrightTimeoutError!")
+            index += 1
+        page.context.close()
+        browser.close()
+
+        _article_cross_ref_json = {'crossReference': data['cross_ref']}
+        _article_info_json = data['info_json']
+
+        # Проверяем, что нашли
+        if len(_article_info_json) == 0:
+            # print("\t_article_info_json is empty()")
+            _article_info_json['articleMainInfo'] = {}
+            _article_info_json['articleSecondaryInfo'] = {}
+        if len(_article_cross_ref_json) == 0:
+            fHandler.appendToFileLog("\t_article_cross_ref_json is empty()")
+            _article_cross_ref_json['crossReference'] = []
+        # print("\tJSONs получены!")
+
+        # Приводим JSONS к нужному формату
+        cross_ref_json = []
+        for elem in _article_cross_ref_json['crossReference']:
+            new_json = {
+                "producerName": elem['manufactureName'],
+                "articleNames": elem['manufacturePartNumber'],
+                "type": "real"
+            }
+            cross_ref_json.append(new_json)
+        _article_cross_ref_json['crossReference'] = cross_ref_json
+
+        if 'productMainInfo' in _article_info_json:
+            _article_info_json['articleMainInfo'] = _article_info_json['productMainInfo']
+            _article_info_json.pop('productMainInfo')
+        else:
+            _article_info_json['articleMainInfo'] = []
+
+        if 'productSecondaryInfo' in _article_info_json:
+            _article_info_json['articleSecondaryInfo'] = {
+                "articleId": _article_info_json['productSecondaryInfo']['productId'],
+                "imageUrls": [_article_info_json['productSecondaryInfo']['imageUrl']]
+            }
+            _article_info_json.pop('productSecondaryInfo')
+        else:
+            _article_info_json['articleSecondaryInfo'] = {
+                "articleId": -1,
+                "imageUrls": []
+            }
+
+        type_json = dict([("articleDescription", type)])
+
+        # Склеиваем информацию в один JSON
+        article_info_json = {**_article_cross_ref_json, **_article_info_json}
+        article_info_json = {**article_info_json, **type_json}
+
+        # Отправляем на генерацию полного JSON
+        article_json = parseJSON.generateArticleJSON(article_name, self._catalogue_name, self._catalogue_name,
+                                                     article_info_json)
+        article_json = self.addAnalogToJSON(analog_article_name, analog_producer_name, article_json)
+
+        # print("\tgenerateArticleJSON() -> completed")
+
+        # fHandler.appendJSONToFile("DONALDSON", article_json, search_request)
+        fHandler.appendToFileLog("\tappendToFile() -> completed")
+        fHandler.appendToFileLog("saveJSON() -> completed")
+
+        return article_json
+
 
     def addAnalogToJSON(self, analog_article_name, analog_producer_name, json):
         if analog_article_name != "" and analog_producer_name != "":
@@ -287,8 +293,3 @@ class Donaldson(Provider.Provider):
             return JSONHandler.appendOldAnalogToJSON(json, analog_article_name, self._catalogue_name)
         return json
 
-
-def goBack(self, driver):
-    executing_return = driver.execute_script("window.history.back(); return 1;")
-    wait_until(int(executing_return), 2)
-    return driver

@@ -117,6 +117,8 @@ class WebWorker:
 
         # Запускаем потоки
         tasks = []
+        from gevent import monkey
+        monkey.patch_all()
         for index in range(0, count_threads):
             tasks.append(threading.Thread(target=parseLINKS, args=(parts[index][0], parts[index][1], self._provider, self._search_request)))
         for i in range(0, count_threads):

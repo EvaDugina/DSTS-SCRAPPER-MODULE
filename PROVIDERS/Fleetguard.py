@@ -1,26 +1,17 @@
-import json
-import math
 import time
-import traceback
-import logging
 
-import Mathf as Mathf
-from bs4 import BeautifulSoup
-from selenium.common import WebDriverException, JavascriptException
+import gevent
+from selenium.common import WebDriverException
 from selenium.webdriver.common.by import By
-from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError, Error
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError, Error
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 from PROVIDERS import Provider
-from HANDLERS import FILEHandler as fHandler, JSONHandler as parseJSON, JSONHandler
+from HANDLERS import FILEHandler as fHandler, JSONHandler as parseJSON, JSONHandler, PLAYWRIGHTHandler
 from UTILS import strings, parse
 
-def wait_until(return_value, period=1):
-    time.sleep(period)
-    while return_value != 1:
-        time.sleep(period)
-    return False
+PLAYWRIGHT = PLAYWRIGHTHandler.PLAYWRIGHT
 
 
 class Fleetguard(Provider.Provider):
@@ -33,6 +24,7 @@ class Fleetguard(Provider.Provider):
 
     def __init__(self, producer_id, dbHandler):
         super().__init__(producer_id, dbHandler)
+        self._playwright = PLAYWRIGHT
 
     def getMainUrl(self):
         return self._main_url
@@ -62,7 +54,7 @@ class Fleetguard(Provider.Provider):
         while scroll_count < max_scrolls:
             driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
             new_height = driver.execute_script("return document.body.scrollHeight")
-            time.sleep(scroll_count*2)
+            gevent.sleep(scroll_count*2)
             if new_height == prev_height:
                 break
             prev_height = new_height
@@ -166,7 +158,7 @@ class Fleetguard(Provider.Provider):
 
     def saveJSON(self, driver, article_url, article_name, description, search_request, analog_article_name, analog_producer_name):
 
-        print("saveJSON():")
+        fHandler.appendToFileLog("saveJSON():")
 
         flag_replaced = False
         flag_replace = False
@@ -207,7 +199,7 @@ class Fleetguard(Provider.Provider):
         for button in buttons:
             if button.text == "OEM Cross Reference":
                 button.click()
-                time.sleep(1)
+                gevent.sleep(1)
                 tab = shadow_root.find_element(By.CLASS_NAME, "tabcontent")
                 rows_analogs = tab.find_elements(By.CLASS_NAME, "Related_Parts_Class")
                 for row in rows_analogs:
@@ -224,8 +216,12 @@ class Fleetguard(Provider.Provider):
                     }
                     cross_reference.append(analogs)
 
+        _article_cross_ref_json = {}
+        _article_cross_ref_json['crossReference'] = cross_reference
+
         # Получаем характеристики
-        self._article_info_json['articleMainInfo'] = {}
+        _article_info_json = {}
+        _article_info_json['articleMainInfo'] = {}
         div_characteristics = shadow_root.find_elements(By.CLASS_NAME, "tableCls")
         if len(div_characteristics) > 0:
             tables = div_characteristics[0].find_elements(By.TAG_NAME, "table")
@@ -235,16 +231,14 @@ class Fleetguard(Provider.Provider):
                     tds = tr.find_elements(By.TAG_NAME, "td")
                     name = tds[0].text
                     value = tds[1].text
-                    self._article_info_json['articleMainInfo'][name] = f"{value}"
+                    _article_info_json['articleMainInfo'][name] = f"{value}"
 
         # Получаем изображение
         imageURLS = []
         image = shadow_root.find_element(By.CLASS_NAME, "imgfluid")
         imageURLS.append(image.get_attribute("src"))
 
-        self._article_cross_ref_json['crossReference'] = cross_reference
-
-        self._article_info_json['articleSecondaryInfo'] = {
+        _article_info_json['articleSecondaryInfo'] = {
             "articleId": article_name,
             "imageUrls": imageURLS
         }
@@ -252,7 +246,7 @@ class Fleetguard(Provider.Provider):
         type_json = dict([("articleDescription", description)])
 
         # Склеиваем информацию в один JSON
-        article_info_json = {**self._article_cross_ref_json, **self._article_info_json}
+        article_info_json = {**_article_cross_ref_json, **_article_info_json}
         article_info_json = {**article_info_json, **type_json}
 
         # Отправляем на генерацию полного JSON
@@ -271,42 +265,9 @@ class Fleetguard(Provider.Provider):
 
         return article_json
 
-    with sync_playwright() as p:
-        def handle_response(self, response):
-            if len(self._article_cross_ref_json) < 1:
-                if "fetchproductcrossreflist?" in response.url:
-                    try:
-                        if 'crossReferenceList' in response.json():
-                            self._article_cross_ref_json['crossReference'] = response.json()['crossReferenceList']
-                            fHandler.appendToFileLog("\t_article_cross_ref_json -> НАЙДЕН!")
-                    except Error:
-                        pass
-
-            if len(self._article_info_json) < 1:
-                if "fetchProductAttrAndRecentlyViewed?" in response.url:
-                    article_info_characteristic = dict()
-                    article_info_else = dict()
-                    try:
-                        if 'productAttributesResponse' in response.json():
-                            article_info_characteristic['productMainInfo'] = response.json()['productAttributesResponse'][
-                                'dynamicAttributes']
-                        if 'recentlyViewedProductResponse' in response.json():
-                            article_info_else['productSecondaryInfo'] = \
-                                response.json()['recentlyViewedProductResponse']['recentlyViewedProducts'][0]
-                        self._article_info_json = {**article_info_characteristic, **article_info_else}
-                        fHandler.appendToFileLog("\t_article_info_json -> НАЙДЕН!")
-                    except Error:
-                        pass
-
     def addAnalogToJSON(self, analog_article_name, analog_producer_name, json):
         if analog_article_name != "" and analog_producer_name != "":
             return JSONHandler.appendAnalogToJSON(json, analog_article_name, analog_producer_name)
         elif analog_article_name != "":
             return JSONHandler.appendOldAnalogToJSON(json, analog_article_name, self._catalogue_name)
         return json
-
-
-def goBack(self, driver):
-    executing_return = driver.execute_script("window.history.back(); return 1;")
-    wait_until(int(executing_return), 2)
-    return driver

@@ -1,28 +1,26 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import asyncio
 import json
 import time
 
-from playwright.async_api import async_playwright
-from selenium.common import WebDriverException, JavascriptException
+import gevent
+from selenium.common import WebDriverException
 from selenium.webdriver.common.by import By
-from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError, Error
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError, Error
 
 import Decorators
 from PROVIDERS.Provider import Provider
-from HANDLERS import FILEHandler as fHandler, JSONHandler as parseJSON, JSONHandler
+from HANDLERS import FILEHandler as fHandler, JSONHandler, PLAYWRIGHTHandler
 from UTILS import strings, parse
 
-
-PLAYWRIGHT = sync_playwright().start()
+PLAYWRIGHT = PLAYWRIGHTHandler.PLAYWRIGHT
 
 
 def wait_until(return_value, period=1):
-    time.sleep(period)
+    gevent.sleep(period)
     while return_value != 1:
-        time.sleep(period)
+        gevent.sleep(period)
     return False
 
 
@@ -113,7 +111,7 @@ class HiFi(Provider):
                     try:
                         while 'paging' not in response.json():
                             wait_until(1, 1)
-                        print(response.json()['paging'])
+                        # print(response.json()['paging'])
                         self.max_page_search = response.json()['paging']['lastPage']
                         self.total_search_count = response.json()['paging']['total']
                     except Error:
@@ -124,7 +122,7 @@ class HiFi(Provider):
                     try:
                         while 'paging' not in response.json():
                             wait_until(1, 1)
-                        print(response.json()['paging'])
+                        # print(response.json()['paging'])
                         self.max_page_cross_ref = response.json()['paging']['lastPage']
                         self.total_cross_ref_count = response.json()['paging']['total']
                     except Error:
@@ -312,10 +310,11 @@ class HiFi(Provider):
 
         fHandler.appendToFileLog("saveJSON():")
 
-        self.article_id = article_url.split("/")[-1].split("%20")[0]
+        article_id = article_url.split("/")[-1].split("%20")[0]
 
         # Получаем Cross-Reference
-        self._article_cross_ref_json['crossReference'] = []
+        _article_cross_ref_json = {}
+        _article_cross_ref_json['crossReference'] = []
         analogs = driver.find_elements(By.CLASS_NAME, "compatible-application")
         if len(analogs) > 0:
             for analog in analogs:
@@ -330,10 +329,11 @@ class HiFi(Provider):
                     analog_article = article.find_element(By.TAG_NAME, "a")
                     analog_article_name = analog_article.text.replace("$", "").strip()
                     new_json['articleNames'].append(analog_article_name)
-                self._article_cross_ref_json['crossReference'].append(new_json)
+                _article_cross_ref_json['crossReference'].append(new_json)
 
         # Получаем характеристики
-        self._article_info_json['articleMainInfo'] = {}
+        _article_info_json = {}
+        _article_info_json['articleMainInfo'] = {}
         if len(driver.find_elements(By.CLASS_NAME, "attribute")) > 1:
             for div_attribute in driver.find_elements(By.CLASS_NAME, "attribute"):
                 characteristic_name = div_attribute.find_element(By.TAG_NAME, "h4").get_attribute("innerHTML")
@@ -341,7 +341,7 @@ class HiFi(Provider):
                 characteristic_value = ""
                 if len(spans_characteristic_value) > 1:
                     characteristic_value = spans_characteristic_value[1].get_attribute("innerHTML")
-                self._article_info_json['articleMainInfo'][characteristic_name] = f"{characteristic_value}"
+                _article_info_json['articleMainInfo'][characteristic_name] = f"{characteristic_value}"
 
         #  Вытаскиваем изображения
         imageURLS = []
@@ -349,19 +349,19 @@ class HiFi(Provider):
         for figure in figures:
             imageURLS.append(figure.find_element(By.TAG_NAME, "img").get_attribute("src"))
 
-        self._article_info_json['articleSecondaryInfo'] = {
-            "articleId": self.article_id,
+        _article_info_json['articleSecondaryInfo'] = {
+            "articleId": article_id,
             "imageUrls": imageURLS
         }
 
         type_json = dict([("articleDescription", type)])
 
         # Склеиваем информацию в один JSON
-        article_info_json = {**self._article_cross_ref_json, **self._article_info_json}
+        article_info_json = {**_article_cross_ref_json, **_article_info_json}
         article_info_json = {**article_info_json, **type_json}
 
         # Отправляем на генерацию полного JSON
-        article_json = parseJSON.generateArticleJSON(article_name, self._catalogue_name, self._catalogue_name,
+        article_json = JSONHandler.generateArticleJSON(article_name, self._catalogue_name, self._catalogue_name,
                                                      article_info_json)
         article_json = self.addAnalogToJSON(analog_article_name, analog_producer_name, article_json)
 
@@ -374,105 +374,105 @@ class HiFi(Provider):
         return article_json
 
 
-    def saveJSONwithPlaywright(self, driver, article_url, article_name, type, search_request, analog_article_name, analog_producer_name):
+    # def saveJSONwithPlaywright(self, driver, article_url, article_name, type, search_request, analog_article_name, analog_producer_name):
+    #
+    #     fHandler.appendToFileLog("saveJSON():")
+    #
+    #     article_id = article_url.split("/")[-1].split("%20")[0]
+    #
+    #     # Получаем Cross-Ref
+    #     index = 0
+    #     limit_check = 3
+    #     self._article_cross_ref_json = {}
+    #     browser = self._playwright.chromium.launch(headless=False)
+    #     page = browser.new_page()
+    #     while len(self._article_cross_ref_json) == 0 and index < limit_check:
+    #         try:
+    #             page.set_default_timeout(10000)
+    #             page.on("response", self.handle_response)
+    #             page.goto(article_url, wait_until="networkidle")
+    #         except PlaywrightTimeoutError:
+    #             fHandler.appendToFileLog("PlaywrightTimeoutError!")
+    #         index += 1
+    #     page.context.close()
+    #     browser.close()
+    #
+    #     # Получаем характеристики
+    #     self._article_info_json['articleMainInfo'] = {}
+    #     if len(driver.find_elements(By.CLASS_NAME, "attribute")) > 1:
+    #         for div_attribute in driver.find_elements(By.CLASS_NAME, "attribute"):
+    #             characteristic_name = div_attribute.find_elements(By.TAG_NAME, "h4")[0].get_attribute("innerHTML")
+    #             spans_characteristic_value = div_attribute.find_elements(By.TAG_NAME, "span")
+    #             characteristic_value = ""
+    #             if len(spans_characteristic_value) > 1:
+    #                 characteristic_value = spans_characteristic_value[1].get_attribute("innerHTML")
+    #             self._article_info_json['articleMainInfo'][characteristic_name] = f"{characteristic_value}"
+    #
+    #     #  Вытаскиваем изображения
+    #     imageURLS = []
+    #     figures = driver.find_elements(By.TAG_NAME, "figure")
+    #     for figure in figures:
+    #         imageURLS.append(figure.find_elements(By.TAG_NAME, "img")[0].get_attribute("src"))
+    #
+    #     # Проверяем, что нашли
+    #     if len(self._article_cross_ref_json) == 0:
+    #         fHandler.appendToFileLog("\t_article_cross_ref_json is empty()")
+    #         self._article_cross_ref_json['crossReference'] = []
+    #     # print("\tJSONs получены!")
+    #
+    #     # Приводим JSONS к нужному формату
+    #     cross_ref_json = []
+    #     for key in self._article_cross_ref_json['crossReference']:
+    #         new_json = {
+    #             "producerName": key,
+    #             "articleNames": [],
+    #             "type": "real"
+    #         }
+    #         for analog in list(self._article_cross_ref_json['crossReference'][key]):
+    #             new_json['articleNames'].append(analog['model']['label'])
+    #         cross_ref_json.append(new_json)
+    #     self._article_cross_ref_json['crossReference'] = cross_ref_json
+    #
+    #     self._article_info_json['articleSecondaryInfo'] = {
+    #         "articleId": article_id,
+    #         "imageUrls": imageURLS
+    #     }
+    #
+    #     type_json = dict([("articleDescription", type)])
+    #
+    #     # Склеиваем информацию в один JSON
+    #     article_info_json = {**self._article_cross_ref_json, **self._article_info_json}
+    #     article_info_json = {**article_info_json, **type_json}
+    #
+    #     # Отправляем на генерацию полного JSON
+    #     article_json = JSONHandler.generateArticleJSON(article_name, self._catalogue_name, self._catalogue_name,
+    #                                                  article_info_json)
+    #     article_json = self.addAnalogToJSON(analog_article_name, analog_producer_name, article_json)
+    #
+    #     # print("\tgenerateArticleJSON() -> completed")
+    #
+    #     # fHandler.appendJSONToFile("DONALDSON", article_json, search_request)
+    #     fHandler.appendToFileLog("\tappendToFile() -> completed")
+    #     fHandler.appendToFileLog("saveJSON() -> completed")
+    #
+    #     return article_json
 
-        fHandler.appendToFileLog("saveJSON():")
 
-        self.article_id = article_url.split("/")[-1].split("%20")[0]
-
-        # Получаем Cross-Ref
-        index = 0
-        limit_check = 3
-        self._article_cross_ref_json = {}
-        browser = self._playwright.chromium.launch(headless=False)
-        page = browser.new_page()
-        while len(self._article_cross_ref_json) == 0 and index < limit_check:
-            try:
-                page.set_default_timeout(10000)
-                page.on("response", self.handle_response)
-                page.goto(article_url, wait_until="networkidle")
-            except PlaywrightTimeoutError:
-                fHandler.appendToFileLog("PlaywrightTimeoutError!")
-            index += 1
-        page.context.close()
-        browser.close()
-
-        # Получаем характеристики
-        self._article_info_json['articleMainInfo'] = {}
-        if len(driver.find_elements(By.CLASS_NAME, "attribute")) > 1:
-            for div_attribute in driver.find_elements(By.CLASS_NAME, "attribute"):
-                characteristic_name = div_attribute.find_elements(By.TAG_NAME, "h4")[0].get_attribute("innerHTML")
-                spans_characteristic_value = div_attribute.find_elements(By.TAG_NAME, "span")
-                characteristic_value = ""
-                if len(spans_characteristic_value) > 1:
-                    characteristic_value = spans_characteristic_value[1].get_attribute("innerHTML")
-                self._article_info_json['articleMainInfo'][characteristic_name] = f"{characteristic_value}"
-
-        #  Вытаскиваем изображения
-        imageURLS = []
-        figures = driver.find_elements(By.TAG_NAME, "figure")
-        for figure in figures:
-            imageURLS.append(figure.find_elements(By.TAG_NAME, "img")[0].get_attribute("src"))
-
-        # Проверяем, что нашли
-        if len(self._article_cross_ref_json) == 0:
-            fHandler.appendToFileLog("\t_article_cross_ref_json is empty()")
-            self._article_cross_ref_json['crossReference'] = []
-        # print("\tJSONs получены!")
-
-        # Приводим JSONS к нужному формату
-        cross_ref_json = []
-        for key in self._article_cross_ref_json['crossReference']:
-            new_json = {
-                "producerName": key,
-                "articleNames": [],
-                "type": "real"
-            }
-            for analog in list(self._article_cross_ref_json['crossReference'][key]):
-                new_json['articleNames'].append(analog['model']['label'])
-            cross_ref_json.append(new_json)
-        self._article_cross_ref_json['crossReference'] = cross_ref_json
-
-        self._article_info_json['articleSecondaryInfo'] = {
-            "articleId": self.article_id,
-            "imageUrls": imageURLS
-        }
-
-        type_json = dict([("articleDescription", type)])
-
-        # Склеиваем информацию в один JSON
-        article_info_json = {**self._article_cross_ref_json, **self._article_info_json}
-        article_info_json = {**article_info_json, **type_json}
-
-        # Отправляем на генерацию полного JSON
-        article_json = parseJSON.generateArticleJSON(article_name, self._catalogue_name, self._catalogue_name,
-                                                     article_info_json)
-        article_json = self.addAnalogToJSON(analog_article_name, analog_producer_name, article_json)
-
-        # print("\tgenerateArticleJSON() -> completed")
-
-        # fHandler.appendJSONToFile("DONALDSON", article_json, search_request)
-        fHandler.appendToFileLog("\tappendToFile() -> completed")
-        fHandler.appendToFileLog("saveJSON() -> completed")
-
-        return article_json
-
-
-    def handle_response(self, response):
-        if len(self._article_cross_ref_json) < 1:
-            if self.article_id.split("%20")[0] in response.url:
-                try:
-                    if response.json() and 'id' not in response.json():
-                        self._article_cross_ref_json['crossReference'] = response.json()
-                        fHandler.appendToFileLog("\t_article_cross_ref_json -> FOUNDED!")
-                except json.decoder.JSONDecodeError:
-                    return
-                except TypeError:
-                    return
-                except Error:
-                    return
-                except ValueError:
-                    return
+    # def handle_response(self, response):
+    #     if len(self._article_cross_ref_json) < 1:
+    #         if self.article_id.split("%20")[0] in response.url:
+    #             try:
+    #                 if response.json() and 'id' not in response.json():
+    #                     self._article_cross_ref_json['crossReference'] = response.json()
+    #                     fHandler.appendToFileLog("\t_article_cross_ref_json -> FOUNDED!")
+    #             except json.decoder.JSONDecodeError:
+    #                 return
+    #             except TypeError:
+    #                 return
+    #             except Error:
+    #                 return
+    #             except ValueError:
+    #                 return
 
     # def addAnalogToJSON(self, article, json):
     #     if len(article) == 4:
@@ -488,8 +488,3 @@ class HiFi(Provider):
             return JSONHandler.appendOldAnalogToJSON(json, analog_article_name, self._catalogue_name)
         return json
 
-
-def goBack(self, driver):
-    executing_return = driver.execute_script("window.history.back(); return 1;")
-    wait_until(int(executing_return), 2)
-    return driver

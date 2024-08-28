@@ -1,7 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+# https://stackoverflow.com/questions/63564559/greenlet-error-cannot-switch-to-a-different-thread
+from gevent import monkey
+monkey.patch_all()
+
 import logging
+
 
 logging.getLogger().setLevel(logging.INFO)
 
@@ -103,9 +108,6 @@ class Provider:
     max_page = 1
     _dbHandler = None
 
-    _article_cross_ref_json = dict()
-    _article_info_json = dict()
-
     def __init__(self, producer_id=None, dbHandler=None):
         if producer_id is not None and dbHandler is not None:
             self._producer_id = producer_id
@@ -159,7 +161,4 @@ class Provider:
     #     pass
 
     def setInfo(self, article_name, producer_name, info_json):
-        pass
-
-    def goBack(self, driver):
         pass

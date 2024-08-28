@@ -1,32 +1,18 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from gevent import monkey
-monkey.patch_all()
-
-import json
 import time
-import logging
 
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common import WebDriverException, JavascriptException
+from selenium.common import WebDriverException
 from selenium.webdriver.common.by import By
-from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError, Error
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError, Error
 
 from PROVIDERS import Provider
-from HANDLERS import FILEHandler as fHandler, JSONHandler as parseJSON, JSONHandler
+from HANDLERS import FILEHandler as fHandler, JSONHandler as parseJSON, JSONHandler, PLAYWRIGHTHandler
 
-
-logging.getLogger().setLevel(logging.INFO)
-PLAYWRIGHT = sync_playwright().start()
-
-
-def wait_until(return_value, period=1):
-    time.sleep(period)
-    while return_value != 1:
-        time.sleep(period)
-    return False
+PLAYWRIGHT = PLAYWRIGHTHandler.PLAYWRIGHT
 
 
 class Mann(Provider.Provider):
@@ -98,8 +84,6 @@ class Mann(Provider.Provider):
 
         if "catalog-prod?query=" in response.url:
             try:
-                while 'data' not in response.json():
-                    wait_until(1, 1)
                 crossReference = response.json()['data']['catalogSearch']['crossReference']
                 self.max_page_cross_ref = crossReference['pageInfo']['totalPages']
                 self.total_cross_ref_count = crossReference['totalCount']
@@ -322,10 +306,13 @@ class Mann(Provider.Provider):
                 "type": "real"
             }
             cross_reference.append(analogs)
+        _article_cross_ref_json = {}
+        _article_cross_ref_json['crossReference'] = cross_reference
 
 
         # Получаем характеристики
-        self._article_info_json['articleMainInfo'] = {}
+        _article_info_json = {}
+        _article_info_json['articleMainInfo'] = {}
         div_characteristics = driver.find_elements(By.CLASS_NAME, "cmp-product__summary")
         if len(div_characteristics) > 0:
             lis = div_characteristics[0].find_elements(By.TAG_NAME, "li")
@@ -335,12 +322,12 @@ class Mann(Provider.Provider):
                     characteristcs = text.split(";")
                     for characteristic in characteristcs:
                         name, value = characteristic.split(" = ")
-                        self._article_info_json['articleMainInfo'][name] = f"{value}"
+                        _article_info_json['articleMainInfo'][name] = f"{value}"
                 elif " : " in text:
                     name, value = text.split(" : ")
-                    self._article_info_json['articleMainInfo'][name] = f"{value}"
+                    _article_info_json['articleMainInfo'][name] = f"{value}"
                 else:
-                    self._article_info_json['articleMainInfo']["Дополнительно"] = f"{text}"
+                    _article_info_json['articleMainInfo']["Дополнительно"] = f"{text}"
 
         # Получаем изображение
         imageURLS = []
@@ -352,9 +339,7 @@ class Mann(Provider.Provider):
                     break
                 imageURLS.append(image.get_attribute("src"))
 
-        self._article_cross_ref_json['crossReference'] = cross_reference
-
-        self._article_info_json['articleSecondaryInfo'] = {
+        _article_info_json['articleSecondaryInfo'] = {
             "articleId": article_name,
             "imageUrls": imageURLS
         }
@@ -362,7 +347,7 @@ class Mann(Provider.Provider):
         type_json = dict([("articleDescription", description)])
 
         # Склеиваем информацию в один JSON
-        article_info_json = {**self._article_cross_ref_json, **self._article_info_json}
+        article_info_json = {**_article_cross_ref_json, **_article_info_json}
         article_info_json = {**article_info_json, **type_json}
 
         # Отправляем на генерацию полного JSON
@@ -405,8 +390,3 @@ class Mann(Provider.Provider):
         elif analog_article_name != "":
             return JSONHandler.appendOldAnalogToJSON(json, analog_article_name, self._catalogue_name)
         return json
-
-    def goBack(self, driver):
-        executing_return = driver.execute_script("window.history.back(); return 1;")
-        wait_until(int(executing_return), 2)
-        return driver
