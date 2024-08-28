@@ -2,6 +2,7 @@ CREATE TABLE articles	(
 	id serial,
 	article_name text, -- --> название артукула с пробелами
 	producer_id integer, -- --> идентификатор производителя
+	type integer, -- --> тип товара 0 - действующий, 1 - устаревший
 	CONSTRAINT articles_pkey PRIMARY KEY (id)
 );
 

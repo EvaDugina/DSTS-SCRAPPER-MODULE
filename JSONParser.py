@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+from gevent import monkey
+
 import datetime
 import json
 import threading
@@ -29,6 +31,8 @@ def parseJSONS(start_line, end_line):
 
         parseJSON(article_name, producer_name, line_json['type'], line_json['info'], catalogue_name)
         print(f'{article_name} ИЗ КАТАЛОГА {catalogue_name} УСПЕШНО ДОБАВЛЕН!')
+
+    return 0
 
 
 def parseJSON(main_article_name, main_producer_name, type, json_info, catalogue_name):
@@ -93,10 +97,12 @@ def parseJSONSbyThreads(catalogue_name, search_request):
 
     # Запускаем потоки
     tasks = []
+    monkey.patch_all()
     for i in range(0, count_threads):
         tasks.append(threading.Thread(target=parseJSONS, args=(parts[i][0], parts[i][1])))
     for i in range(0, count_threads):
         tasks[i].start()
+    for i in range(0, count_threads):
         tasks[i].join()
 
 

@@ -7,6 +7,8 @@ from bs4 import BeautifulSoup
 from selenium.common import WebDriverException, JavascriptException
 from selenium.webdriver.common.by import By
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError, Error
+from selenium.webdriver.support.wait import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 from PROVIDERS import Provider
 from HANDLERS import FILEHandler as fHandler, JSONHandler as parseJSON, JSONHandler
@@ -54,8 +56,9 @@ class Donaldson(Provider.Provider):
 
     def getPageCount(self, driver, search_request):
         driver.get(self._catalogue_url + search_request)
-        lastButton = driver.find_element(By.CLASS_NAME, "lastButton")
+        lastButton = driver.find_elements(By.CLASS_NAME, "lastButton")
         if len(lastButton) > 0:
+            lastButton = lastButton[0]
             try:
                 max_page = int(lastButton.find_element(By.TAG_NAME, "a").get_attribute("innerHTML"))
                 self.max_page = max_page

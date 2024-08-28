@@ -254,7 +254,7 @@ def getLINKSbyPage(thread_id, pages):
             fHandler.appendLINKtoFile(_catalogue_name, "", _search_request)
             return "ОТСУТСВУЮТ РЕЗУЛЬТАТЫ ПОИСКА"
 
-        saveArticles(_catalogue_name, _search_request, articles, thread_id)
+        saveArticles(articles)
 
 
     if _provider.getCatalogueName() == "MANN":

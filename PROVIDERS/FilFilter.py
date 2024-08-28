@@ -88,8 +88,6 @@ class FilFilter(Provider.Provider):
         driver.get(self._catalog_url + search_request)
         return driver
 
-
-
     # Парсинг одну страницу поиска
     def parseSearchResult(self, driver, pageNumber):
         tbody_search_result = driver.find_elements(By.CLASS_NAME, "md-body")[0]
@@ -128,9 +126,11 @@ class FilFilter(Provider.Provider):
         fHandler.appendToFileLog("----> PRODUCER_ID: " + str(main_producer_id))
 
         if type == "real":
-            main_article_id = self._dbHandler.insertArticle(main_article_name, main_producer_id, self._catalogue_name, 0)
+            main_article_id = self._dbHandler.insertArticle(main_article_name, main_producer_id, self._catalogue_name,
+                                                            0)
         else:
-            main_article_id = self._dbHandler.insertArticle(main_article_name, main_producer_id, self._catalogue_name, 1)
+            main_article_id = self._dbHandler.insertArticle(main_article_name, main_producer_id, self._catalogue_name,
+                                                            1)
 
         last_producer_name = ""
         producer_id = -1
@@ -165,7 +165,7 @@ class FilFilter(Provider.Provider):
                     analog_article_id = self._dbHandler.insertArticle(article_name, producer_id, self._catalogue_name)
                 analog_article_ids.append(analog_article_id)
 
-            if index == len(cross_ref)-1:
+            if index == len(cross_ref) - 1:
                 self._dbHandler.insertArticleAnalogs(main_article_id, analog_article_ids, self._catalogue_name)
 
             index += 1
@@ -176,7 +176,8 @@ class FilFilter(Provider.Provider):
     def setInfo(self, article_name, producer_name, info_json):
         pass
 
-    def saveJSON(self, driver, article_url, article_name, description, search_request, analog_article_name, analog_producer_name):
+    def saveJSON(self, driver, article_url, article_name, description, search_request, analog_article_name,
+                 analog_producer_name):
 
         fHandler.appendToFileLog("saveJSON():")
 
@@ -208,10 +209,10 @@ class FilFilter(Provider.Provider):
             replace_article_names = []
             article_type = "real"
             if len(driver.find_elements(By.CLASS_NAME, "product-link")) > 0:
-                status = driver.find_element(By.CLASS_NAME, "product-link")\
-                    .find_element(By.XPATH, '..')\
-                    .find_element(By.XPATH, "preceding-sibling::*[1]")\
-                    .find_element(By.TAG_NAME, "b")\
+                status = driver.find_element(By.CLASS_NAME, "product-link") \
+                    .find_element(By.XPATH, '..') \
+                    .find_element(By.XPATH, "preceding-sibling::*[1]") \
+                    .find_element(By.TAG_NAME, "b") \
                     .get_attribute("innerHTML")
                 status = status.split(" ")[0].upper()
                 if status == "ЗАМЕНЕНО":
@@ -229,7 +230,6 @@ class FilFilter(Provider.Provider):
                 len(driver.find_elements(By.CLASS_NAME, "flex-40")) - 1] \
                     .get_attribute("innerHTML") == "не поставляется":
                 article_type = "old"
-
 
             # Получаем характеристики
             self._article_info_json['articleMainInfo'] = {}
@@ -264,8 +264,11 @@ class FilFilter(Provider.Provider):
             previous_producer_name = ""
             new_json = {}
             id = 0
-            self._article_cross_ref_json['crossReference'] = sorted(self._article_cross_ref_json['crossReference'],
-                                                                    key=lambda elem: elem['manufacturer_name'])
+            try:
+                self._article_cross_ref_json['crossReference'] = sorted(self._article_cross_ref_json['crossReference'],
+                                                                        key=lambda elem: elem['manufacturer_name'])
+            except Error:
+                pass
             for elem in self._article_cross_ref_json['crossReference']:
                 if elem['manufacturer_name'] != previous_producer_name:
                     if id != 0:
@@ -300,13 +303,15 @@ class FilFilter(Provider.Provider):
 
             # Отправляем на генерацию полного JSON
             article_json = parseJSON.generateArticleJSON(article_name, self._catalogue_name, self._catalogue_name,
-                                                            article_info_json, article_type)
+                                                         article_info_json, article_type)
             article_json = self.addAnalogToJSON(analog_article_name, analog_producer_name, article_json)
 
             if flag_replaced:
-                article_json = JSONHandler.appendAnalogsToJSON(article_json, replaced_article_names, self._catalogue_name)
+                article_json = JSONHandler.appendAnalogsToJSON(article_json, replaced_article_names,
+                                                               self._catalogue_name)
             if flag_replace:
-                article_json = JSONHandler.appendOldAnalogsToJSON(article_json, replace_article_names, self._catalogue_name)
+                article_json = JSONHandler.appendOldAnalogsToJSON(article_json, replace_article_names,
+                                                                  self._catalogue_name)
 
             # fHandler.appendJSONToFile("DONALDSON", article_json, search_request)
             fHandler.appendToFileLog("\tappendToFile() -> completed")

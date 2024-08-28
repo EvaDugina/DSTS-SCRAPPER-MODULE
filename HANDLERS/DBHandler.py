@@ -9,6 +9,7 @@ from UTILS import parse
 
 class DBWorker:
     CONNECTION = None
+    FLAG_REWRITE_DATA = True
 
     def __init__(self, port):
         self.CONNECTION = psycopg2.connect(dbname='dsts', user='dsts', port=port,
@@ -245,7 +246,34 @@ class DBWorker:
 
         return producer_id
 
-    def insertArticleAnalog(self, article_id, analog_article_id, catalogue_name) -> int:
+    def insertArticleAnalogs(self, article_id, analog_article_ids, catalogue_name):
+
+        group_id = self.getGroupArticleAnalogs(article_id)
+
+        # Добавляем себя в качестве аналога
+        if group_id == -1:
+            group_id = self.insertFirstArticleAnalog(article_id, article_id, catalogue_name)
+        # elif self.FLAG_REWRITE_DATA:
+        #     self.deleteAllAnalogsAcrossMe(article_id, group_id, catalogue_name)
+
+        query = ""
+        for analog_article_id in analog_article_ids:
+            # if not self.isAnalogInComparisonTable(article_id, analog_article_id, catalogue_name):
+            query += queryInsertArticlesComparison(group_id, analog_article_id, catalogue_name)
+            fHandl.appendToFileLog(f"\t\t\tINSERTED ANALOGS: {article_id} {analog_article_id}")
+
+        if query != "":
+            cursor = self.CONNECTION.cursor()
+            cursor.execute(query)
+            self.CONNECTION.commit()
+
+        # Убираем повторяющиеся строки
+        query = queryDeleteSimmilarArticlesComparison(group_id)
+        cursor = self.CONNECTION.cursor()
+        cursor.execute(query)
+        self.CONNECTION.commit()
+
+    def insertFirstArticleAnalog(self, article_id, analog_article_id, catalogue_name) -> int:
 
         group_id = self.getGroupArticleAnalogs(article_id)
 
@@ -266,31 +294,6 @@ class DBWorker:
         fHandl.appendToFileLog(f"\t\t\tINSERTED ANALOG g{group_id}: {article_id}")
 
         return group_id
-
-    def insertArticleAnalogs(self, article_id, analog_article_ids, catalogue_name):
-
-        group_id = self.getGroupArticleAnalogs(article_id)
-
-        # Добавляем себя в качестве аналога
-        if group_id == -1:
-            group_id = self.insertArticleAnalog(article_id, article_id, catalogue_name)
-
-        query = ""
-        for analog_article_id in analog_article_ids:
-            # if not self.isAnalogInComparisonTable(article_id, analog_article_id, catalogue_name):
-            query += queryInsertArticlesComparison(group_id, analog_article_id, catalogue_name)
-            fHandl.appendToFileLog(f"\t\t\tINSERTED ANALOGS: {article_id} {analog_article_id}")
-
-        if query != "":
-            cursor = self.CONNECTION.cursor()
-            cursor.execute(query)
-            self.CONNECTION.commit()
-
-        # Убираем повторяющиеся строки
-        query = queryDeleteSimmilarArticlesComparison(group_id)
-        cursor = self.CONNECTION.cursor()
-        cursor.execute(query)
-        self.CONNECTION.commit()
 
 
     def insertProducerNameVariation(self, producer_id, name_variation, catalogue_name):
@@ -321,14 +324,16 @@ class DBWorker:
 
     def insertArticleInfo(self, article_id, catalogue_name, url, type, output_json):
 
-        if self.getArticleInfo(article_id, catalogue_name) == []:
+        if not self.getArticleInfo(article_id, catalogue_name):
             query = queryInsertArticleInfo(article_id, catalogue_name, url, type, json.dumps(output_json))
+        elif self.FLAG_REWRITE_DATA:
+            query = queryUpdateArticleInfo(article_id, catalogue_name, url, type, json.dumps(output_json))
 
-            cursor = self.CONNECTION.cursor()
-            cursor.execute(query)
-            self.CONNECTION.commit()
+        cursor = self.CONNECTION.cursor()
+        cursor.execute(query)
+        self.CONNECTION.commit()
 
-            fHandl.appendToFileLog(f"\t\tINSERTED ARTICLE INFO: {article_id} - {catalogue_name}")
+        fHandl.appendToFileLog(f"\t\tINSERTED ARTICLE INFO: {article_id} - {catalogue_name}")
 
 
     def insertCharacteristics(self, charachterictics_json):
@@ -397,6 +402,14 @@ class DBWorker:
 
         return bool(cursor.rowcount)
 
+    def deleteAllAnalogsAcrossMe(self, article_id, group_id, catalogue_name):
+        query = queryDeleteAllAnalogsAcrossMe(article_id, group_id, catalogue_name)
+
+        cursor = self.CONNECTION.cursor()
+        cursor.execute(query)
+        self.CONNECTION.commit()
+
+        return
 
 
 
@@ -496,6 +509,14 @@ def queryInsertArticleInfo(article_id, catalogue_name, url, type, json):
     return "INSERT INTO public.articles_details(article_id, catalogue_name, url, type, json) " \
            + f"VALUES ({article_id}, '{catalogue_name}', '{url}', '{type}', $antihype1${json}$antihype1$);"
 
+def queryUpdateArticleInfo(article_id, catalogue_name, url, type, json):
+    return "UPDATE public.articles_details " \
+           f"SET article_id = {article_id}, catalogue_name = '{catalogue_name}', " \
+           f"url ='{url}', type = '{type}', json = $antihype1${json}$antihype1$ " \
+           f"WHERE article_id = {article_id} AND catalogue_name = '{catalogue_name}';"
+
+
+
 def queryInsertCharacteristic(characteristic):
     return "INSERT INTO characteristics_comparison(characteristic_original, characteristic_alt) " \
            + f"VALUES ('{characteristic}', '{characteristic}') ON CONFLICT (characteristic_original) DO NOTHING;"
@@ -509,6 +530,11 @@ def queryDeleteSimmilarArticlesComparison(group_id):
            f"WHERE a.id > b.id AND a.group_id = {group_id}" \
            "AND a.group_id = b.group_id AND a.article_id = b.article_id AND a.catalogue_name = b.catalogue_name;"
 
+
+def queryDeleteAllAnalogsAcrossMe(article_id, group_id, catalogue_name):
+    return "DELETE FROM articles_comparison as a_c " \
+           f"WHERE a_c.article_id != {article_id} " \
+           f"AND a_c.group_id = {group_id} AND a_c.catalogue_name = '{catalogue_name}'"
 
 
 

@@ -1,13 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from gevent import monkey
-monkey.patch_all()
-
 import asyncio
 import json
 import time
-import logging
 
 from playwright.async_api import async_playwright
 from selenium.common import WebDriverException, JavascriptException
@@ -15,12 +11,11 @@ from selenium.webdriver.common.by import By
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError, Error
 
 import Decorators
-from PROVIDERS import Provider
+from PROVIDERS.Provider import Provider
 from HANDLERS import FILEHandler as fHandler, JSONHandler as parseJSON, JSONHandler
 from UTILS import strings, parse
 
 
-logging.getLogger().setLevel(logging.INFO)
 PLAYWRIGHT = sync_playwright().start()
 
 
@@ -31,7 +26,7 @@ def wait_until(return_value, period=1):
     return False
 
 
-class HiFi(Provider.Provider):
+class HiFi(Provider):
     _main_url = "https://catalog.hifi-filter.com/en-GB"
     _cross_referense_url = "https://catalog.hifi-filter.com/en-GB/search/global/cross-reference?q="
     _catalogue_url = "https://catalog.hifi-filter.com/en-GB/search/global/product?q="
