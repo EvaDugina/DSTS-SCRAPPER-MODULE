@@ -1,4 +1,3 @@
-import asyncio
 import threading
 
 from selenium import webdriver

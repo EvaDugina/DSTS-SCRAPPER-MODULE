@@ -5,46 +5,52 @@ from os import listdir
 from pathlib import Path
 
 
+PATH_LOGS_DIR = "LOGS"
+PATH_JSONS_DIR = "JSONS"
+PATH_LINKS_DIR = "LINKS"
+
 def createLOGSDir():
-    Path(f'LOGS/').mkdir(parents=True, exist_ok=True)
+    Path(f'{PATH_LOGS_DIR}').mkdir(parents=True, exist_ok=True)
 
 def createLINKSDir(catalogue_name):
-    Path(f'LINKS/{catalogue_name}/').mkdir(parents=True, exist_ok=True)
-    Path(f'LINKS/{catalogue_name}/_completed/').mkdir(parents=True, exist_ok=True)
+    Path(f'{PATH_LINKS_DIR}/').mkdir(parents=True, exist_ok=True)
+    Path(f'{PATH_LINKS_DIR}/{catalogue_name}/').mkdir(parents=True, exist_ok=True)
+    Path(f'{PATH_LINKS_DIR}/{catalogue_name}/_completed/').mkdir(parents=True, exist_ok=True)
 
 def createJSONSDir(catalogue_name):
-    Path(f'JSONS/{catalogue_name}/').mkdir(parents=True, exist_ok=True)
-    Path(f'JSONS/{catalogue_name}/_completed/').mkdir(parents=True, exist_ok=True)
+    Path(f'{PATH_JSONS_DIR}/').mkdir(parents=True, exist_ok=True)
+    Path(f'{PATH_JSONS_DIR}/{catalogue_name}/').mkdir(parents=True, exist_ok=True)
+    Path(f'{PATH_JSONS_DIR}/{catalogue_name}/_completed/').mkdir(parents=True, exist_ok=True)
 
 
 
 def moveLINKToCompleted(catalogue_name, search_request):
     number = getCountCompleatedLINKSFiles(catalogue_name) + 1
-    os.rename(f'LINKS/{catalogue_name}/{search_request}.txt', f'LINKS/{catalogue_name}/{number}_{search_request}.txt')
-    shutil.move(f'LINKS/{catalogue_name}/{number}_{search_request}.txt', f'LINKS/{catalogue_name}/_completed')
+    os.rename(f'{PATH_LINKS_DIR}/{catalogue_name}/{search_request}.txt', f'{PATH_LINKS_DIR}/{catalogue_name}/{number}_{search_request}.txt')
+    shutil.move(f'{PATH_LINKS_DIR}/{catalogue_name}/{number}_{search_request}.txt', f'{PATH_LINKS_DIR}/{catalogue_name}/_completed')
 
 def moveJSONToCompleted(catalogue_name, search_request):
     number = getCountCompleatedJSONSFiles(catalogue_name) + 1
-    os.rename(f'JSONS/{catalogue_name}/{search_request}.txt', f'JSONS/{catalogue_name}/{number}_{search_request}.txt')
-    shutil.move(f'JSONS/{catalogue_name}/{number}_{search_request}.txt', f'JSONS/{catalogue_name}/_completed')
+    os.rename(f'{PATH_JSONS_DIR}/{catalogue_name}/{search_request}.txt', f'{PATH_JSONS_DIR}/{catalogue_name}/{number}_{search_request}.txt')
+    shutil.move(f'{PATH_JSONS_DIR}/{catalogue_name}/{number}_{search_request}.txt', f'{PATH_JSONS_DIR}/{catalogue_name}/_completed')
 
 
 
 def appendToFileOutput(text, number):
     # prefix = datetime.datetime.now().strftime("%d%m%Y%H%M%S")
-    with open(f'LOGS/{number}_output.txt', 'a+', encoding="utf-8") as f:
+    with open(f'{PATH_LOGS_DIR}/{number}_output.txt', 'a+', encoding="utf-8") as f:
         f.write(text + "\n")
 
 def appendToFileLog(text):
-    with open(f'LOGS/log.txt', 'a+') as f:
+    with open(f'{PATH_LOGS_DIR}/log.txt', 'a+') as f:
         f.write(text + "\n")
 
 def appendJSONToFile(catalogue_name, text, search_request):
-    with open(f'JSONS/{catalogue_name}/{search_request}.txt', 'a+') as f:
+    with open(f'{PATH_JSONS_DIR}/{catalogue_name}/{search_request}.txt', 'a+') as f:
         f.write(text + "\n")
 
 def appendLINKtoFile(catalogue_name, text, search_request):
-    with open(f'LINKS/{catalogue_name}/{search_request}.txt', 'a+') as f:
+    with open(f'{PATH_LINKS_DIR}/{catalogue_name}/{search_request}.txt', 'a+') as f:
         f.write(text + "\n")
 
 
@@ -52,7 +58,7 @@ def appendLINKtoFile(catalogue_name, text, search_request):
 def getLINKSfromFile(catalogue_name, search_request):
     links = []
     index = 0
-    with open(f'LINKS/{catalogue_name}/{search_request}.txt') as file:
+    with open(f'{PATH_LINKS_DIR}/{catalogue_name}/{search_request}.txt') as file:
         for line in file:
             # print(line)
             links.append(line.rstrip().split(" "))
@@ -62,7 +68,7 @@ def getLINKSfromFile(catalogue_name, search_request):
 def getLINKSfromFileByLines(catalogue_name, search_request, start_line, end_line):
     links = []
     index = 0
-    with open(f'LINKS/{catalogue_name}/{search_request}.txt') as file:
+    with open(f'{PATH_LINKS_DIR}/{catalogue_name}/{search_request}.txt') as file:
         for line in file:
             if index >= start_line and index < end_line and line.rstrip() != "":
                 links.append(line.rstrip().split(" "))
@@ -72,7 +78,7 @@ def getLINKSfromFileByLines(catalogue_name, search_request, start_line, end_line
 def getJSONSfromFileByLines(catalogue_name, search_request, start_line, end_line):
     links = []
     index = 0
-    with open(f'JSONS/{catalogue_name}/{search_request}.txt') as file:
+    with open(f'{PATH_JSONS_DIR}/{catalogue_name}/{search_request}.txt') as file:
         for line in file:
             if index >= start_line and index < end_line:
                 links.append(line.rstrip())
@@ -83,26 +89,26 @@ def getJSONSfromFileByLines(catalogue_name, search_request, start_line, end_line
 
 def getCountLINKSLines(catalogue_name, file_path):
     num_lines = 0
-    for line in open(f'LINKS/{catalogue_name}/{file_path}'):
+    for line in open(f'{PATH_LINKS_DIR}/{catalogue_name}/{file_path}'):
         num_lines += 1
     return num_lines
 
 def getCountJSONSLines(catalogue_name, file_path):
     num_lines = 0
-    for line in open(f'JSONS/{catalogue_name}/{file_path}'):
+    for line in open(f'{PATH_JSONS_DIR}/{catalogue_name}/{file_path}'):
         num_lines += 1
     return num_lines
 
 def getCountCompleatedLINKSFiles(catalogue_name):
-    path = f"LINKS/{catalogue_name}/_completed"
+    path = f"{PATH_LINKS_DIR}/{catalogue_name}/_completed"
     return len(listdir(path))
 
 def getCountCompleatedJSONSFiles(catalogue_name):
-    path = f"JSONS/{catalogue_name}/_completed"
+    path = f"{PATH_JSONS_DIR}/{catalogue_name}/_completed"
     return len(listdir(path))
 
 def getCountCompleatedOUTPUTFiles():
-    path = f"LOGS"
+    path = f"{PATH_LOGS_DIR}"
     return len(listdir(path))-1
 
 
@@ -128,7 +134,7 @@ def getElementsForParse():
     return elements
 
 def deleteSimilarLinesFromJSON(catalogue_name, search_request):
-    path = f'JSONS/{catalogue_name}/{search_request}'
+    path = f'{PATH_JSONS_DIR}/{catalogue_name}/{search_request}'
     lines_seen = set()  # holds lines already seen
     for line in open(path, "r"):
         if line not in lines_seen:  # not a duplicate
