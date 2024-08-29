@@ -4,10 +4,13 @@ import shutil
 from os import listdir
 from pathlib import Path
 
+from loguru import logger
 
 PATH_LOGS_DIR = "LOGS"
 PATH_JSONS_DIR = "JSONS"
 PATH_LINKS_DIR = "LINKS"
+
+PATH_REQUEST_FILE = "SEARCH_REQUESTS.txt"
 
 def createLOGSDir():
     Path(f'{PATH_LOGS_DIR}').mkdir(parents=True, exist_ok=True)
@@ -34,16 +37,14 @@ def moveJSONToCompleted(catalogue_name, search_request):
     os.rename(f'{PATH_JSONS_DIR}/{catalogue_name}/{search_request}.txt', f'{PATH_JSONS_DIR}/{catalogue_name}/{number}_{search_request}.txt')
     shutil.move(f'{PATH_JSONS_DIR}/{catalogue_name}/{number}_{search_request}.txt', f'{PATH_JSONS_DIR}/{catalogue_name}/_completed')
 
-
-
-def appendToFileOutput(text, number):
-    # prefix = datetime.datetime.now().strftime("%d%m%Y%H%M%S")
-    with open(f'{PATH_LOGS_DIR}/{number}_output.txt', 'a+', encoding="utf-8") as f:
+def appendToFileOutput(text):
+    with open(f'{PATH_LOGS_DIR}/output.txt', 'a+') as f:
         f.write(text + "\n")
 
-def appendToFileLog(text):
-    with open(f'{PATH_LOGS_DIR}/log.txt', 'a+') as f:
-        f.write(text + "\n")
+def cleanFileOutput():
+    open(f'{PATH_LOGS_DIR}/output.txt', 'w').close()
+
+
 
 def appendJSONToFile(catalogue_name, text, search_request):
     with open(f'{PATH_JSONS_DIR}/{catalogue_name}/{search_request}.txt', 'a+') as f:
@@ -60,7 +61,6 @@ def getLINKSfromFile(catalogue_name, search_request):
     index = 0
     with open(f'{PATH_LINKS_DIR}/{catalogue_name}/{search_request}.txt') as file:
         for line in file:
-            # print(line)
             links.append(line.rstrip().split(" "))
             index += 1
     return links
@@ -115,7 +115,7 @@ def getCountCompleatedOUTPUTFiles():
 
 def getSearchRequests():
     search_requests = []
-    for line in open(f'SEARCH_REQUESTS.txt'):
+    for line in open(f'{PATH_REQUEST_FILE}'):
         if line.rstrip() == "----" or line.rstrip() == "____":
             break
         search_requests.append(line.rstrip().split(" "))

@@ -1,8 +1,11 @@
 import threading
 
+from loguru import logger
 from selenium import webdriver
-from Error import Error
-from PROVIDERS.Provider import ProviderHandler, Providers
+
+import PROVIDERS.Provider
+from HANDLERS.ERRORHandler import Error
+from PROVIDERS.Provider import ProviderHandler, Providers, Provider
 
 try:
     from BeautifulSoup import BeautifulSoup
@@ -13,17 +16,16 @@ from HANDLERS import FILEHandler as fHandler, DBHandler as db, JSONHandler
 from UTILS import strings
 import Decorators
 
-
 _THREADS_LIMIT = 4
 
 _provider = None
 _search_request = ""
 _catalogue_name = ""
-_thread_results = []
+
+_error = None
 
 
 class WebWorker:
-
     _provider_name = ""
     _provider_code = None
     _search_request = ""
@@ -42,37 +44,30 @@ class WebWorker:
         fHandler.createLINKSDir(self._provider_name)
         fHandler.createJSONSDir(self._provider_name)
 
+    @Decorators.log_decorator
+    def getProvider(self) -> Provider:
 
-    def getProvider(self):
-        fHandler.appendToFileLog(f"ПО САЙТУ-ПРОИЗВОДИТЕЛЮ: {self._provider_name.upper()}")
+        logger.info(f"САЙТ-ПРОИЗВОДИТЕЛЬ: {self._provider_name.upper()}")
         producer_id = self._dbHandler.insertProducer(self._provider_name, self._provider_name)
 
         provider = ProviderHandler().getProviderByProviderCode(self._provider_code)(producer_id, self._dbHandler)
 
         return provider
 
-
     @Decorators.time_decorator
+    @Decorators.error_decorator
+    @Decorators.log_decorator
     def pullCrossRefToDB(self):
 
-        if not checkInternetConnection(self._provider.getMainUrl()):
-            return Error.INTERNET_CONNECTION
-
-        print("----> pullCrossRefToDB() ")
+        checkInternetConnection(self._provider.getMainUrl())
 
         # ПОЛУЧАЕМ КОЛИЧЕСТВО СТРАНИЦ
-        driver = None
-        if not self._provider_name == "HIFI":
-            driver = getBrowser()
-            if driver is None:
-                print("#### ОШИБКА! Не найден браузер")
-                return Error.UNDEFIND_BROWSER
-
+        driver = getBrowser()
+        if driver is None:
+            return Error.UNDEFIND_CHROME_DRIVER
         max_page = self._provider.getPageCount(driver, self._search_request)
-
-        if not self._provider_name == "HIFI":
-            driver.close()
-            driver.quit()
+        driver.close()
+        driver.quit()
 
         if max_page == -1:
             return Error.FIND_NOTHING
@@ -82,20 +77,20 @@ class WebWorker:
             else:
                 max_page = int(max_page)
 
-        print("\n")
-
-
         # Вытаскиваем ссылки на элементы
         self.getArticleLINKSByThreads(max_page)
+        if _error is not None:
+            return _error
 
         # Генерируем JSONS
         self.generateJSONSbyThreads()
-
-        fHandler.moveLINKToCompleted(self._provider_name, self._search_request)
+        if _error is not None:
+            return _error
 
         return Error.SUCCESS
 
-
+    @Decorators.time_decorator
+    @Decorators.log_decorator
     def generateJSONSbyThreads(self):
 
         count_lines = fHandler.getCountLINKSLines(self._provider_name, f"{self._search_request}.txt")
@@ -112,7 +107,7 @@ class WebWorker:
                 start_index = i * count_lines_in_part + offset
                 if i < count_lines % count_threads:
                     offset += 1
-                end_index = (i+1) * count_lines_in_part + offset
+                end_index = (i + 1) * count_lines_in_part + offset
                 parts.append([start_index, end_index])
 
         # Запускаем потоки
@@ -120,27 +115,26 @@ class WebWorker:
         from gevent import monkey
         monkey.patch_all()
         for index in range(0, count_threads):
-            tasks.append(threading.Thread(target=parseLINKS, args=(parts[index][0], parts[index][1], self._provider, self._search_request)))
+            tasks.append(threading.Thread(target=parseLINKS, args=(
+            parts[index][0], parts[index][1], self._provider, self._search_request)))
         for i in range(0, count_threads):
             tasks[i].start()
         for i in range(0, count_threads):
             tasks[i].join()
 
-
+    @Decorators.time_decorator
+    @Decorators.log_decorator
     def getArticleLINKSByThreads(self, max_page):
+
         setGlobals(self._provider, self._search_request)
         setGlobalCatalogueName(self._provider_name)
 
         # Определяем количество потоков
-        if max_page != 0:
-            count_threads = getCountThreads(max_page)
-        else:
-            return ""
+        count_threads = getCountThreads(max_page)
 
         # Если HiFi то...
         if self._provider_name == "HIFI":
-            _thread_results.append(list())
-            getLINKSbyPage(0, range(0, max_page))
+            getLINKSbyPage(range(0, max_page))
 
         elif self._provider_name == "FLEETGUARD":
             saveArticles(self._provider.parseSearchResult(None))
@@ -162,8 +156,7 @@ class WebWorker:
             # Запускаем потоки
             tasks = []
             for i in range(0, count_threads):
-                _thread_results.append(list())
-                tasks.append(threading.Thread(target=getLINKSbyPage, args=(i, pages[i],)))
+                tasks.append(threading.Thread(target=getLINKSbyPage, args=(pages[i],)))
             for index, thread in enumerate(tasks):
                 thread.start()
             for thread in tasks:
@@ -177,16 +170,16 @@ class WebWorker:
 #
 
 @Decorators.time_decorator
+@Decorators.error_decorator
+@Decorators.log_decorator
 def checkInternetConnection(url='http://www.google.com/'):
     # ПРОВЕРКА ИНТЕРНЕТ СОЕДИНЕНИЯ
     try:
         from urllib import request
         request.urlopen(url)
-        return True
+        return Error.SUCCESS
     except:
-        print("#### ОШИБКА! Отсутствует интернет-соединение")
-
-    return False
+        return Error.INTERNET_CONNECTION
 
 
 def setGlobals(provider, search_request):
@@ -200,9 +193,8 @@ def setGlobalCatalogueName(catalogue_name):
     _catalogue_name = catalogue_name
 
 
+@Decorators.log_decorator
 def getBrowser():
-    driver = None
-
     options = webdriver.ChromeOptions()
     options.add_experimental_option(
         "prefs", {
@@ -225,16 +217,17 @@ def getCountThreads(count_elements):
         return count_elements
 
 
-def getLINKSbyPage(thread_id, pages):
+@Decorators.time_decorator
+@Decorators.error_decorator
+@Decorators.log_decorator
+def getLINKSbyPage(pages):
     global _provider, _search_request, _catalogue_name
 
     # ПОИСК БРАУЗЕРА ДЛЯ ИСПОЛЬЗОВАНИЯ
-    driver = None
-    if not _catalogue_name == "HIFI":
-        driver = getBrowser()
-        if driver is None:
-            print("#### ОШИБКА! Не найден браузер")
-            return strings.UNDEFIND_BROWSER
+    driver = getBrowser()
+    if driver is None:
+        _error = Error.UNDEFIND_CHROME_DRIVER
+        return Error.UNDEFIND_CHROME_DRIVER
 
     for page in pages:
 
@@ -248,15 +241,12 @@ def getLINKSbyPage(thread_id, pages):
             a = _provider.search(driver, page, _search_request)
 
         if not a:
-            return strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE
+            _error = Error.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE
+            return Error.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE
 
         articles = _provider.parseSearchResult(driver, page)
-        if len(articles) < 1:
-            fHandler.appendLINKtoFile(_catalogue_name, "", _search_request)
-            return "ОТСУТСВУЮТ РЕЗУЛЬТАТЫ ПОИСКА"
-
-        saveArticles(articles)
-
+        if len(articles) > 0:
+            saveArticles(articles)
 
     if _provider.getCatalogueName() == "MANN":
 
@@ -267,31 +257,25 @@ def getLINKSbyPage(thread_id, pages):
 
             a = _provider.searchCrossRef(driver, page, _search_request)
             if not a:
-                return strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE
+                _error = Error.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE
+                return Error.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE
 
             articles = _provider.parseCrossReferenceResult(driver, page)
-            if len(articles) < 1:
-                fHandler.appendLINKtoFile(_catalogue_name, "", _search_request)
-                return "ОТСУТСВУЮТ РЕЗУЛЬТАТЫ ПОИСКА"
+            if len(articles) > 0:
+                saveArticles(articles)
 
-            saveArticles(articles)
+    driver.close()
+    driver.quit()
 
-
-
-    # AttributeError: 'NoneType' object has no attribute 'close'
-    # Exception in thread Thread-9 (getLINKSbyPage):
-    if not _catalogue_name == "HIFI":
-        driver.close()
-        driver.quit()
-
-    return "ССЫЛКИ ВЫТАЩЕНЫ УСПЕШНО!"
+    return Error.SUCCESS
 
 
+@Decorators.log_decorator
 def saveArticles(articles):
     global _search_request, _catalogue_name
 
     for article in articles:
-        print(f"{article[0]} - найден!")
+        logger.info(f"{article[0]} - найден!")
 
         if len(article) == 4:
             fHandler.appendLINKtoFile(_catalogue_name,
@@ -304,14 +288,17 @@ def saveArticles(articles):
             fHandler.appendLINKtoFile(_catalogue_name, article[0] + " " + article[1], _search_request)
 
 
+@Decorators.time_decorator
+@Decorators.error_decorator
+@Decorators.log_decorator
 def parseLINKS(start_line, end_line, provider, search_request):
     # provider = self.getProvider()
 
     # ПОИСК БРАУЗЕРА ДЛЯ ИСПОЛЬЗОВАНИЯ
     driver = getBrowser()
     if driver is None:
-        print("#### ОШИБКА! Не найден браузер")
-        return Error.UNDEFIND_BROWSER
+        _error = Error.UNDEFIND_CHROME_DRIVER
+        return Error.UNDEFIND_CHROME_DRIVER
 
     articles = fHandler.getLINKSfromFileByLines(provider.getCatalogueName(), search_request, start_line, end_line)
 
@@ -322,9 +309,8 @@ def parseLINKS(start_line, end_line, provider, search_request):
         driver = provider.loadArticlePage(driver, article[1])
         type = provider.getArticleType(driver)
         if not driver:
+            _error = Error.UNLOAD_ARTICLE_PAGE
             return Error.UNLOAD_ARTICLE_PAGE
-        if driver == strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE:
-            return Error.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE
 
         # Вытаскиваем аналоги
         analog_article_name = ""
@@ -336,20 +322,13 @@ def parseLINKS(start_line, end_line, provider, search_request):
             analog_article_name = article[2]
 
         # Формируем JSON
-        article_json = provider.saveJSON(driver, article[1], article[0], type, search_request, analog_article_name, analog_producer_name)
+        article_json = provider.saveJSON(driver, article[1], article[0], type, search_request, analog_article_name,
+                                         analog_producer_name)
 
-        # if len(article) == 3 and self._catalogue_name == "DONALDSON":
-        #     article_json = JSONHandler.appendOldAnalogToJSON(article_json, article[2], provider.getCatalogueName())
-        # if len(article) == 4 and self._catalogue_name == "FILFILTER":
-        #     article_json = JSONHandler.appendAnalogToJSON(article_json, article[2], article[3])
         fHandler.appendJSONToFile(provider.getCatalogueName(), article_json, search_request)
-        print(f'{article[0]} -- взят JSON!')
-
-        # self._provider.getAnalogs(article[1], article[0])
-        # flag = doWhileNoSuccess(0, "parseCrossRef", self._provider.parseCrossReference, driver, article)
+        logger.success(f'{article[0]} -- взят JSON!')
 
     driver.close()
     driver.quit()
 
-    return "JSONS вытащены успешно!"
-
+    return 0

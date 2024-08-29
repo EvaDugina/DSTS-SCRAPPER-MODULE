@@ -1,9 +1,11 @@
 import time
 
 from bs4 import BeautifulSoup
+from loguru import logger
 from selenium.common import WebDriverException, JavascriptException
 from selenium.webdriver.common.by import By
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError, Error
+
 
 from PROVIDERS import Provider
 from HANDLERS import FILEHandler as fHandler, JSONHandler as parseJSON, JSONHandler, PLAYWRIGHTHandler
@@ -41,7 +43,9 @@ class Donaldson(Provider.Provider):
     def getCatalogueName(self):
         return self._catalogue_name
 
+
     def search(self, driver, page_number, search_request):
+
         if page_number > 0:
             # Переходим на др. страницу
             driver.get(self._catalogue_url + search_request + f'&No={20 * page_number}')
@@ -53,7 +57,9 @@ class Donaldson(Provider.Provider):
             return strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE
 
 
+
     def getPageCount(self, driver, search_request):
+
         driver.get(self._catalogue_url + search_request)
         lastButton = driver.find_elements(By.CLASS_NAME, "lastButton")
         if len(lastButton) > 0:
@@ -71,7 +77,9 @@ class Donaldson(Provider.Provider):
             return True
         return False
 
+
     def parseSearchResult(self, driver, pageNumber=None):
+
         div_elements = driver.find_elements(By.CLASS_NAME, "listTile")
         articles = []
         for index, div in enumerate(div_elements, start=0):
@@ -120,6 +128,7 @@ class Donaldson(Provider.Provider):
                 return strings.INCORRECT_LINK_OR_CHANGED_SITE_STRUCTURE
         return articles
 
+
     def loadArticlePage(self, driver, article_url, search_type=False):
         try:
             driver.get(article_url)
@@ -127,35 +136,20 @@ class Donaldson(Provider.Provider):
             return False
         return driver
 
+
     def getArticleType(self, driver) -> str:
+
         parsed_html = BeautifulSoup(driver.page_source.encode('utf-8'), "html.parser")
         body = parsed_html.body
         found = body.find('div', attrs={'class': 'prodSubTitleMob'})
         return found.text
 
-    def parseCrossReference(self, main_article_name, producer_name, type, cross_ref):
-        main_producer_id = self._dbHandler.insertProducer(producer_name, self._catalogue_name)
-        fHandler.appendToFileLog("----> PRODUCER_ID: " + str(main_producer_id))
-        main_article_id = self._dbHandler.insertArticle(main_article_name, main_producer_id, self._catalogue_name)
-        for elem in cross_ref:
-            producer_name = elem['producerName']
-            fHandler.appendToFileLog("\t--> PRODUCER_NAME: " + str(producer_name))
-            producer_id = self._dbHandler.insertProducer(producer_name, self._catalogue_name)
-            analog_article_names = elem['articleNames']
-            analog_article_ids = []
-            for article_name in analog_article_names:
-                if elem['type'] == "old":
-                    analog_article_id = self._dbHandler.insertArticle(article_name, producer_id, self._catalogue_name,
-                                                                      1)
-                else:
-                    analog_article_id = self._dbHandler.insertArticle(article_name, producer_id, self._catalogue_name)
-                analog_article_ids.append(analog_article_id)
-            self._dbHandler.insertArticleAnalogs(main_article_id, analog_article_ids, self._catalogue_name)
-
     def parseCrossReferenceResult(self, driver, pageNumber):
         pass
 
+
     def setInfo(self, article_name, producer_name, info_json):
+
         producer_id = self._dbHandler.getProducerIdByNameAndCatalogueName(producer_name, self._catalogue_name)
         article_id = self._dbHandler.getArticleByName(article_name, producer_id)[0]
 
@@ -170,9 +164,8 @@ class Donaldson(Provider.Provider):
 
         self._dbHandler.insertArticleInfo(article_id, self._catalogue_name, url, type, output_json)
 
-    def saveJSON(self, driver, article_url, article_name, type, search_request, analog_article_name, analog_producer_name):
 
-        fHandler.appendToFileLog("saveJSON():")
+    def saveJSON(self, driver, article_url, article_name, type, search_request, analog_article_name, analog_producer_name):
 
         # Получаем Cross-Ref & Characteristics & Type
         index = 0
@@ -190,7 +183,6 @@ class Donaldson(Provider.Provider):
                         if 'crossReferenceList' in response.json():
                             data['cross_ref'] = response.json()[
                                 'crossReferenceList']
-                            fHandler.appendToFileLog("\t_article_cross_ref_json -> НАЙДЕН!")
                     except Error:
                         pass
 
@@ -207,7 +199,7 @@ class Donaldson(Provider.Provider):
                             article_info_else['productSecondaryInfo'] = \
                                 response.json()['recentlyViewedProductResponse']['recentlyViewedProducts'][0]
                         data["info_json"] = {**article_info_characteristic, **article_info_else}
-                        fHandler.appendToFileLog("\t_article_info_json -> НАЙДЕН!")
+
                     except Error:
                         pass
 
@@ -219,7 +211,7 @@ class Donaldson(Provider.Provider):
                 page.on("response", handle_response)
                 page.goto(article_url, wait_until="networkidle")
             except PlaywrightTimeoutError:
-                fHandler.appendToFileLog("PlaywrightTimeoutError!")
+                pass
             index += 1
         page.context.close()
         browser.close()
@@ -233,7 +225,6 @@ class Donaldson(Provider.Provider):
             _article_info_json['articleMainInfo'] = {}
             _article_info_json['articleSecondaryInfo'] = {}
         if len(_article_cross_ref_json) == 0:
-            fHandler.appendToFileLog("\t_article_cross_ref_json is empty()")
             _article_cross_ref_json['crossReference'] = []
         # print("\tJSONs получены!")
 
@@ -276,12 +267,6 @@ class Donaldson(Provider.Provider):
         article_json = parseJSON.generateArticleJSON(article_name, self._catalogue_name, self._catalogue_name,
                                                      article_info_json)
         article_json = self.addAnalogToJSON(analog_article_name, analog_producer_name, article_json)
-
-        # print("\tgenerateArticleJSON() -> completed")
-
-        # fHandler.appendJSONToFile("DONALDSON", article_json, search_request)
-        fHandler.appendToFileLog("\tappendToFile() -> completed")
-        fHandler.appendToFileLog("saveJSON() -> completed")
 
         return article_json
 

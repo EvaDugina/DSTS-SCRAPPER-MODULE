@@ -2,24 +2,6 @@ import json
 from HANDLERS import FILEHandler as fHandl
 
 
-def parseCrossRefDonaldsonJSON(start_index, end_index, json_string, article_id, number_thread, dbHandler):
-    fHandl.appendToFileLog(f'T{number_thread}: START PARSING!')
-    for i in range (start_index, end_index+1):
-        cross_ref_el = json_string['crossReferenceList'][i]
-
-        producer_name = cross_ref_el['producerName']
-        producer_id = dbHandler.insertProducer(producer_name)
-        # print(producer_name)
-        analogs = []
-        for article_name in cross_ref_el['articleNames']:
-            analog_article_id = dbHandler.insertArticle(article_name, producer_id)
-            analogs.append(analog_article_id)
-
-        dbHandler.insertArticleAnalogs(article_id, analogs)
-
-    fHandl.appendToFileLog(f'T{number_thread}: END PARSING!')
-
-
 def generateArticleJSON(article_name, catalogue_name, producer_name, article_info_json, type="real"):
     article_json = json.dumps({'name': article_name, 'catalogue_name': catalogue_name, 'producer_name': producer_name,
                                'type': type, 'info': article_info_json})

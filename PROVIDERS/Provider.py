@@ -3,6 +3,9 @@
 
 # https://stackoverflow.com/questions/63564559/greenlet-error-cannot-switch-to-a-different-thread
 from gevent import monkey
+
+import Decorators
+
 monkey.patch_all()
 
 import logging
@@ -123,6 +126,7 @@ class Provider:
     def getCatalogueName(self):
         pass
 
+    @Decorators.log_decorator
     def getPageCount(self, driver, search_request):
         pass
 
@@ -130,27 +134,27 @@ class Provider:
         pass
 
 
-
+    @Decorators.log_decorator
     def search(self, driver, page_number, search_request):
         pass
 
+    @Decorators.log_decorator
     def parseSearchResult(self, driver, pageNumber):
         pass
 
+    @Decorators.log_decorator
     def parseCrossReferenceResult(self, driver, pageNumber):
         pass
 
+    @Decorators.log_decorator
     def loadArticlePage(self, driver, article_url, search_type):
         pass
 
+    @Decorators.log_decorator
     def getArticleType(self, driver) -> str:
         pass
 
-    def parseCrossReference(self, main_article_name, producer_name, type, cross_ref):
-        pass
-
-
-
+    @Decorators.log_decorator
     def saveJSON(self, driver, article_url, article_name, type, search_request, analog_article_name, analog_producer_name):
         pass
 

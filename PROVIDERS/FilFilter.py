@@ -1,7 +1,11 @@
+from gevent import monkey
+monkey.patch_all()
+
 import json
 import time
 
 import gevent
+from loguru import logger
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError, Error
 from selenium.common import WebDriverException
 from selenium.webdriver.common.by import By
@@ -42,6 +46,7 @@ class FilFilter(Provider.Provider):
         return self._catalogue_name
 
     def getPageCount(self, driver, search_request):
+
         driver.get(self._catalog_url + search_request)
 
         tbody_search_result = driver.find_elements(By.CLASS_NAME, "md-body")
@@ -62,11 +67,13 @@ class FilFilter(Provider.Provider):
 
     # Поиск
     def search(self, driver, page_number, search_request):
+
         driver.get(self._catalog_url + search_request)
         return driver
 
     # Парсинг одну страницу поиска
     def parseSearchResult(self, driver, pageNumber):
+
         tbody_search_result = driver.find_elements(By.CLASS_NAME, "md-body")[0]
         ng_init_search_result = tbody_search_result.get_attribute("ng-init")
         search_result_json = json.loads(ng_init_search_result.split(" = ")[1])
@@ -96,67 +103,67 @@ class FilFilter(Provider.Provider):
         return driver
 
     def getArticleType(self, driver) -> str:
+
         return ""
 
-    def parseCrossReference(self, main_article_name, producer_name, type, cross_ref):
-        main_producer_id = self._dbHandler.insertProducer(producer_name, self._catalogue_name)
-        fHandler.appendToFileLog("----> PRODUCER_ID: " + str(main_producer_id))
-
-        if type == "real":
-            main_article_id = self._dbHandler.insertArticle(main_article_name, main_producer_id, self._catalogue_name,
-                                                            0)
-        else:
-            main_article_id = self._dbHandler.insertArticle(main_article_name, main_producer_id, self._catalogue_name,
-                                                            1)
-
-        last_producer_name = ""
-        producer_id = -1
-        analog_article_ids = []
-        index = 0
-        for elem in cross_ref:
-            producer_name = elem['producerName']
-            if last_producer_name == producer_name:
-                article_name = elem['articleNames'][0]
-                if elem['type'] == "old":
-                    analog_article_id = self._dbHandler.insertArticle(article_name, producer_id, self._catalogue_name,
-                                                                      1)
-                else:
-                    analog_article_id = self._dbHandler.insertArticle(article_name, producer_id, self._catalogue_name)
-                analog_article_ids.append(analog_article_id)
-
-            else:
-                if index != 0:
-                    self._dbHandler.insertArticleAnalogs(main_article_id, analog_article_ids, self._catalogue_name)
-
-                last_producer_name = producer_name
-
-                fHandler.appendToFileLog("\t--> PRODUCER_NAME: " + str(producer_name))
-                producer_id = self._dbHandler.insertProducer(producer_name, self._catalogue_name)
-                analog_article_ids = []
-
-                article_name = elem['articleNames'][0]
-                if elem['type'] == "old":
-                    analog_article_id = self._dbHandler.insertArticle(article_name, producer_id, self._catalogue_name,
-                                                                      1)
-                else:
-                    analog_article_id = self._dbHandler.insertArticle(article_name, producer_id, self._catalogue_name)
-                analog_article_ids.append(analog_article_id)
-
-            if index == len(cross_ref) - 1:
-                self._dbHandler.insertArticleAnalogs(main_article_id, analog_article_ids, self._catalogue_name)
-
-            index += 1
+    # def parseCrossReference(self, main_article_name, producer_name, type, cross_ref):
+    #     main_producer_id = self._dbHandler.insertProducer(producer_name, self._catalogue_name)
+    #     fHandler.appendToFileLog2("----> PRODUCER_ID: " + str(main_producer_id))
+    #
+    #     if type == "real":
+    #         main_article_id = self._dbHandler.insertArticle(main_article_name, main_producer_id, self._catalogue_name,
+    #                                                         0)
+    #     else:
+    #         main_article_id = self._dbHandler.insertArticle(main_article_name, main_producer_id, self._catalogue_name,
+    #                                                         1)
+    #
+    #     last_producer_name = ""
+    #     producer_id = -1
+    #     analog_article_ids = []
+    #     index = 0
+    #     for elem in cross_ref:
+    #         producer_name = elem['producerName']
+    #         if last_producer_name == producer_name:
+    #             article_name = elem['articleNames'][0]
+    #             if elem['type'] == "old":
+    #                 analog_article_id = self._dbHandler.insertArticle(article_name, producer_id, self._catalogue_name,
+    #                                                                   1)
+    #             else:
+    #                 analog_article_id = self._dbHandler.insertArticle(article_name, producer_id, self._catalogue_name)
+    #             analog_article_ids.append(analog_article_id)
+    #
+    #         else:
+    #             if index != 0:
+    #                 self._dbHandler.insertArticleAnalogs(main_article_id, analog_article_ids, self._catalogue_name)
+    #
+    #             last_producer_name = producer_name
+    #
+    #             fHandler.appendToFileLog2("\t--> PRODUCER_NAME: " + str(producer_name))
+    #             producer_id = self._dbHandler.insertProducer(producer_name, self._catalogue_name)
+    #             analog_article_ids = []
+    #
+    #             article_name = elem['articleNames'][0]
+    #             if elem['type'] == "old":
+    #                 analog_article_id = self._dbHandler.insertArticle(article_name, producer_id, self._catalogue_name,
+    #                                                                   1)
+    #             else:
+    #                 analog_article_id = self._dbHandler.insertArticle(article_name, producer_id, self._catalogue_name)
+    #             analog_article_ids.append(analog_article_id)
+    #
+    #         if index == len(cross_ref) - 1:
+    #             self._dbHandler.insertArticleAnalogs(main_article_id, analog_article_ids, self._catalogue_name)
+    #
+    #         index += 1
 
     # def getAnalogs(self, article_url, article_id):
     #     pass
 
     def setInfo(self, article_name, producer_name, info_json):
+
         pass
 
     def saveJSON(self, driver, article_url, article_name, description, search_request, analog_article_name,
                  analog_producer_name):
-
-        fHandler.appendToFileLog("saveJSON():")
 
         # Получаем Cross-Ref & Type
         index = 0
@@ -174,11 +181,10 @@ class FilFilter(Provider.Provider):
                         retval = response.json()['retval']
                         if retval:
                             _article_cross_ref_json['crossReference'] = retval['references']
-                        fHandler.appendToFileLog("\t_article_cross_ref_json -> НАЙДЕН!")
                     else:
                         return None
                 except PlaywrightTimeoutError:
-                    fHandler.appendToFileLog("PlaywrightTimeoutError!")
+                    pass
                 except Error:
                     pass
 
@@ -190,7 +196,7 @@ class FilFilter(Provider.Provider):
                 page.on("response", handle_response)
                 page.goto(article_url, wait_until="networkidle")
             except PlaywrightTimeoutError:
-                fHandler.appendToFileLog("PlaywrightTimeoutError!")
+                pass
             if index == limit_check - 2:
                 page.wait_for_timeout(2000)
             index += 1
@@ -250,7 +256,6 @@ class FilFilter(Provider.Provider):
 
         # Проверяем, что нашли
         if len(_article_cross_ref_json) == 0:
-            fHandler.appendToFileLog("\t_article_cross_ref_json is empty()")
             _article_cross_ref_json['crossReference'] = []
         else:
             _article_cross_ref_json['crossReference'] = sorted(_article_cross_ref_json['crossReference'],
@@ -308,9 +313,6 @@ class FilFilter(Provider.Provider):
             article_json = JSONHandler.appendOldAnalogsToJSON(article_json, replace_article_names,
                                                               self._catalogue_name)
 
-        # fHandler.appendJSONToFile("DONALDSON", article_json, search_request)
-        fHandler.appendToFileLog("\tappendToFile() -> completed")
-        fHandler.appendToFileLog("saveJSON() -> completed")
 
         return article_json
 

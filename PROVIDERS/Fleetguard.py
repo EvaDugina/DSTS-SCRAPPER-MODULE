@@ -1,6 +1,7 @@
 import time
 
 import gevent
+from loguru import logger
 from selenium.common import WebDriverException
 from selenium.webdriver.common.by import By
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError, Error
@@ -43,6 +44,7 @@ class Fleetguard(Provider.Provider):
 
 
     def getPageCount(self, driver, search_request):
+
         driver.get(self.getSearchUrl(search_request))
 
         # Прогружаем всю страницу со всеми товарами
@@ -119,29 +121,11 @@ class Fleetguard(Provider.Provider):
         type = shadow_root.find_element(By.CLASS_NAME, "productDetails").find_elements(By.TAG_NAME, "h2")[0].text
         return type
 
-    def parseCrossReference(self, main_article_name, producer_name, type, cross_ref):
-        main_producer_id = self._dbHandler.insertProducer(producer_name, self._catalogue_name)
-        fHandler.appendToFileLog("----> PRODUCER_ID: " + str(main_producer_id))
-        main_article_id = self._dbHandler.insertArticle(main_article_name, main_producer_id, self._catalogue_name)
-        for elem in cross_ref:
-            producer_name = elem['producerName']
-            fHandler.appendToFileLog("\t--> PRODUCER_NAME: " + str(producer_name))
-            producer_id = self._dbHandler.insertProducer(producer_name, self._catalogue_name)
-            analog_article_names = elem['articleNames']
-            analog_article_ids = []
-            for article_name in analog_article_names:
-                if elem['type'] == "old":
-                    analog_article_id = self._dbHandler.insertArticle(article_name, producer_id, self._catalogue_name,
-                                                                      1)
-                else:
-                    analog_article_id = self._dbHandler.insertArticle(article_name, producer_id, self._catalogue_name)
-                analog_article_ids.append(analog_article_id)
-            self._dbHandler.insertArticleAnalogs(main_article_id, analog_article_ids, self._catalogue_name)
-
     def parseCrossReferenceResult(self, driver, pageNumber):
         pass
 
     def setInfo(self, article_name, producer_name, info_json):
+
         producer_id = self._dbHandler.getProducerIdByNameAndCatalogueName(producer_name, self._catalogue_name)
         article_id = self._dbHandler.getArticleByName(article_name, producer_id)[0]
 
@@ -157,8 +141,6 @@ class Fleetguard(Provider.Provider):
         self._dbHandler.insertArticleInfo(article_id, self._catalogue_name, url, type, output_json)
 
     def saveJSON(self, driver, article_url, article_name, description, search_request, analog_article_name, analog_producer_name):
-
-        fHandler.appendToFileLog("saveJSON():")
 
         flag_replaced = False
         flag_replace = False
@@ -258,10 +240,6 @@ class Fleetguard(Provider.Provider):
             article_json = JSONHandler.appendAnalogsToJSON(article_json, replaced_article_names, self._catalogue_name)
         if flag_replace:
             article_json = JSONHandler.appendOldAnalogsToJSON(article_json, replace_article_names, self._catalogue_name)
-
-        # fHandler.appendJSONToFile("DONALDSON", article_json, search_request)
-        fHandler.appendToFileLog("\tappendToFile() -> completed")
-        fHandler.appendToFileLog("saveJSON() -> completed")
 
         return article_json
 

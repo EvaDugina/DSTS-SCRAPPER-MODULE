@@ -3,6 +3,7 @@
 
 import time
 
+from loguru import logger
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common import WebDriverException
@@ -58,7 +59,7 @@ class Mann(Provider.Provider):
                 page.on("response", self.searchPagesHandle)
                 page.goto(self.getSearchUrl(search_request), wait_until="networkidle")
             except PlaywrightTimeoutError:
-                fHandler.appendToFileLog("PlaywrightTimeoutError!")
+                pass
             index += 1
         page.context.close()
         browser.close()
@@ -203,7 +204,6 @@ class Mann(Provider.Provider):
 
     # Загрузка страницы товара
     def loadArticlePage(self, driver, article_url, search_type=False):
-
         try:
             driver.get(article_url)
         except WebDriverException:
@@ -215,60 +215,10 @@ class Mann(Provider.Provider):
         WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.CLASS_NAME, 'cmp-product__title-family')))
         return driver.find_element(By.CLASS_NAME, "cmp-product__title-family").text
 
-    def parseCrossReference(self, main_article_name, producer_name, type, cross_ref):
-        main_producer_id = self._dbHandler.insertProducer(producer_name, self._catalogue_name)
-        fHandler.appendToFileLog("----> PRODUCER_ID: " + str(main_producer_id))
-
-        if type == "real":
-            main_article_id = self._dbHandler.insertArticle(main_article_name, main_producer_id, self._catalogue_name, 0)
-        else:
-            main_article_id = self._dbHandler.insertArticle(main_article_name, main_producer_id, self._catalogue_name, 1)
-
-        last_producer_name = ""
-        producer_id = -1
-        analog_article_ids = []
-        index = 0
-        for elem in cross_ref:
-            producer_name = elem['producerName']
-            if last_producer_name == producer_name:
-                article_name = elem['articleNames'][0]
-                if elem['type'] == "old":
-                    analog_article_id = self._dbHandler.insertArticle(article_name, producer_id, self._catalogue_name,
-                                                                      1)
-                else:
-                    analog_article_id = self._dbHandler.insertArticle(article_name, producer_id, self._catalogue_name)
-                analog_article_ids.append(analog_article_id)
-
-            else:
-                if index != 0:
-                    self._dbHandler.insertArticleAnalogs(main_article_id, analog_article_ids, self._catalogue_name)
-
-                last_producer_name = producer_name
-
-                fHandler.appendToFileLog("\t--> PRODUCER_NAME: " + str(producer_name))
-                producer_id = self._dbHandler.insertProducer(producer_name, self._catalogue_name)
-                analog_article_ids = []
-
-                article_name = elem['articleNames'][0]
-                if elem['type'] == "old":
-                    analog_article_id = self._dbHandler.insertArticle(article_name, producer_id, self._catalogue_name,
-                                                                      1)
-                else:
-                    analog_article_id = self._dbHandler.insertArticle(article_name, producer_id, self._catalogue_name)
-                analog_article_ids.append(analog_article_id)
-
-            if index == len(cross_ref)-1:
-                self._dbHandler.insertArticleAnalogs(main_article_id, analog_article_ids, self._catalogue_name)
-
-            index += 1
-
-
     def setInfo(self, article_name, producer_name, info_json):
         pass
 
     def saveJSON(self, driver, article_url, article_name, description, search_request, analog_article_name, analog_producer_name):
-
-        fHandler.appendToFileLog("saveJSON():")
 
         flag_replaced = False
         flag_replace = False
@@ -360,29 +310,8 @@ class Mann(Provider.Provider):
         if flag_replace:
             article_json = JSONHandler.appendOldAnalogsToJSON(article_json, replace_article_names, self._catalogue_name)
 
-        # fHandler.appendJSONToFile("DONALDSON", article_json, search_request)
-        fHandler.appendToFileLog("\tappendToFile() -> completed")
-        fHandler.appendToFileLog("saveJSON() -> completed")
-
         return article_json
 
-    def handle_response(self, response):
-        if len(self._article_cross_ref_json) > 0:
-            return None
-
-        if "get_product_oe_references" in response.url:
-            try:
-                if 'retval' in response.json():
-                    retval = response.json()['retval']
-                    if retval:
-                        self._article_cross_ref_json['crossReference'] = retval['references']
-                    fHandler.appendToFileLog("\t_article_cross_ref_json -> НАЙДЕН!")
-                else:
-                    return None
-            except PlaywrightTimeoutError:
-                fHandler.appendToFileLog("PlaywrightTimeoutError!")
-            except Error:
-                pass
 
     def addAnalogToJSON(self, analog_article_name, analog_producer_name, json):
         if analog_article_name != "" and analog_producer_name != "":
