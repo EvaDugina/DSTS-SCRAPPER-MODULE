@@ -174,7 +174,7 @@ def main():
 
 @Decorators.error_decorator
 def parseElements(elements):
-    init.init()
+    # init.init()
 
     logger.debug("parseElements()")
 

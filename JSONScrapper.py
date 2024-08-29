@@ -5,6 +5,7 @@
 from loguru import logger
 
 import Decorators
+import JSONParser
 from HANDLERS import WEBHandler as wHandler
 from HANDLERS import FILEHandler as fHandler
 import init
@@ -34,16 +35,20 @@ def main():
 
     exit(0)
 
-
+@Decorators.time_decorator
 def searchRequests(search_requests):
     init.init()
 
-    logger.debug("searchRequests()")
+    logger.debug(f"searchRequests({search_requests})")
+    logger.debug(search_requests)
 
     fHandler.cleanFileOutput()
 
     for request in search_requests:
         searchRequest(request[0], request[1])
+
+    elements = fHandler.getElementsForParse()
+    JSONParser.parseElements(elements)
 
     exit(0)
 

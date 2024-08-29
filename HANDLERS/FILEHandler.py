@@ -12,16 +12,16 @@ PATH_LINKS_DIR = "LINKS"
 
 PATH_REQUEST_FILE = "SEARCH_REQUESTS.txt"
 
-def createLOGSDir():
+def createDirectories():
     Path(f'{PATH_LOGS_DIR}').mkdir(parents=True, exist_ok=True)
+    Path(f'{PATH_LINKS_DIR}/').mkdir(parents=True, exist_ok=True)
+    Path(f'{PATH_JSONS_DIR}/').mkdir(parents=True, exist_ok=True)
 
 def createLINKSDir(catalogue_name):
-    Path(f'{PATH_LINKS_DIR}/').mkdir(parents=True, exist_ok=True)
     Path(f'{PATH_LINKS_DIR}/{catalogue_name}/').mkdir(parents=True, exist_ok=True)
     Path(f'{PATH_LINKS_DIR}/{catalogue_name}/_completed/').mkdir(parents=True, exist_ok=True)
 
 def createJSONSDir(catalogue_name):
-    Path(f'{PATH_JSONS_DIR}/').mkdir(parents=True, exist_ok=True)
     Path(f'{PATH_JSONS_DIR}/{catalogue_name}/').mkdir(parents=True, exist_ok=True)
     Path(f'{PATH_JSONS_DIR}/{catalogue_name}/_completed/').mkdir(parents=True, exist_ok=True)
 

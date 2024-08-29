@@ -4,5 +4,5 @@ from HANDLERS import FILEHandler as fHandler, LOGHandler
 
 
 def init():
-    fHandler.createLOGSDir()
+    fHandler.createDirectories()
     LOGHandler.init()
