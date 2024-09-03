@@ -1,10 +1,7 @@
 import multiprocessing
-import websockets
 import asyncio
 import json
 from fastapi import FastAPI, WebSocket
-import uvicorn
-from loguru import logger
 
 import Decorators
 import JSONScrapper
@@ -17,18 +14,12 @@ _proccess = None
 
 app = FastAPI()
 
-
 @Decorators.log_decorator
 def start_search(search_requests):
     global _proccess
 
     if _proccess is not None:
         stop_search()
-
-    # init.init()
-    # logger.debug(search_requests)
-
-    # JSONScrapper.searchRequests(search_requests)
 
     _proccess = multiprocessing.Process(target=JSONScrapper.searchRequests, args=(search_requests, ))
     _proccess.start()
@@ -91,5 +82,6 @@ async def main(websocket: WebSocket):
 # uvicorn server:app --reload --port 8083 --host localhost
 
 if __name__ == "__main__":
+    print("SERVER STARTING")
     asyncio.run(main())
     # uvicorn.run(app, host=HOST, port=PORT)

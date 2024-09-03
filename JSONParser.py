@@ -19,7 +19,6 @@ from PROVIDERS.Provider import ProviderHandler
 _search_request = ""
 _catalogue_name = ""
 _dbHandler = dbHandler.DBWorker('5432')
-_number = fHandler.getCountCompleatedOUTPUTFiles() + 1
 
 _flag_has_error = False
 
@@ -70,8 +69,7 @@ def parseJSONSbyThreads(catalogue_name, search_request):
 @Decorators.time_decorator
 @Decorators.log_decorator
 def parseJSONS(start_line, end_line):
-
-    global _dbHandler, _number
+    global _dbHandler
 
     json_lines = fHandler.getJSONSfromFileByLines(_catalogue_name, _search_request, start_line, end_line)
 
