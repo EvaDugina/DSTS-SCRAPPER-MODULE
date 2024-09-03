@@ -18,7 +18,7 @@ from PROVIDERS.Provider import ProviderHandler
 
 _search_request = ""
 _catalogue_name = ""
-_dbHandler = dbHandler.DBWorker('5432')
+_dbHandler = None
 
 _flag_has_error = False
 
@@ -157,6 +157,8 @@ def convertTypeToDigits(type):
 def main():
     init.init()
 
+    _dbHandler = dbHandler.DBWorker()
+
     logger.debug("JSONParser.py")
     elements = fHandler.getElementsForParse()
 
@@ -173,6 +175,7 @@ def main():
 @Decorators.error_decorator
 def parseElements(elements):
     # init.init()
+    _dbHandler = dbHandler.DBWorker()
 
     logger.debug("parseElements()")
 

@@ -12,9 +12,9 @@ class DBWorker:
     CONNECTION = None
     FLAG_REWRITE_DATA = True
 
-    def __init__(self, port):
-        self.CONNECTION = psycopg2.connect(dbname='dsts', user='dsts', port=port,
-                                           password='123456', host='localhost')
+    def __init__(self):
+        self.CONNECTION = psycopg2.connect(dbname='dsts', user='dsts', port='5432',
+                                           password='123456', host="localhost")
 
     @Decorators.log_decorator
     def getArticleById(self, article_id) -> list:
