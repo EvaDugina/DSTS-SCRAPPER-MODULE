@@ -1,6 +1,8 @@
 import multiprocessing
 import asyncio
 import json
+import time
+
 from fastapi import FastAPI, WebSocket
 
 import Decorators
@@ -15,40 +17,57 @@ _proccess = None
 app = FastAPI()
 
 @Decorators.log_decorator
-def start_search(search_requests):
+async def search(search_requests):
     global _proccess
 
+    print(">> search()")
+
     if _proccess is not None:
-        stop_search()
+        stop()
 
     _proccess = multiprocessing.Process(target=JSONScrapper.searchRequests, args=(search_requests, ))
     _proccess.start()
     _proccess.join()
 
-    print("<< start_search()")
+    print("<< search()")
+
+def getSearchProgress():
+    return 0
 
 
-def stop_search():
+def stop():
     global _proccess
 
-    if _proccess is not None and _proccess.is_alive():
+    print(_proccess)
+
+    if _proccess is not None:
         _proccess.kill()
+        _proccess.terminate()
+        time.sleep(0.1)
+        if not _proccess.is_alive():
+            _proccess.join(timeout=1.0)
 
 
 @Decorators.log_decorator
-def request_handler(request):
+async def request_handler(request):
+    print(">> request_handler")
+
     if not "flag" in request:
-        return "Некорректный flag!"
+        return "Некорректный запрос!"
 
-    if request["flag"] == "searchRequests":
-        start_search(request["requests"])
-        return "Поиск окончен!"
+    if request["flag"] == "SearchRequests":
+        # search(request["requests"])
+        # asyncio.run(search(request["requests"]))
+        return "Поиск начат!"
 
-    elif request["flag"] == "stopSearch":
-        stop_search()
+    elif request["flag"] == "StopSearch":
+        stop()
         return "Поиск остановлен!"
 
-    return "Неизвестный flag!"
+    elif request["flag"] == "GetSearchProgress":
+        return getSearchProgress()
+
+    return "Неизвестный тип операции!"
 
 
 def send_format(json_data):
@@ -66,14 +85,13 @@ async def main(websocket: WebSocket):
 
         # преобразуем json к словарю для удобной обработки
         request = dict(message)
-        print("\n\n\t[DATA FROM FRONT] ", request)
-        answer = {}
+        print("[DATA FROM FRONT] ", request)
         try:
-            answer = request_handler(request)
+            answer = await request_handler(request)
         except Exception as E:
             answer = {'error', E}
             pass
-        print("\t[DATA FOR FRONT] ", answer)
+        print("[DATA FOR FRONT] ", answer)
 
         await websocket.send_json(answer)
 

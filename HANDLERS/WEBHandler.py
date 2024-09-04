@@ -37,7 +37,7 @@ class WebWorker:
         self._provider_name = ProviderHandler().getProviderNameByCode(provider_code)
         self._provider_code = provider_code
         self._search_request = request
-        self._dbHandler = db.DBWorker('5432')
+        self._dbHandler = db.DBWorker()
 
         self._provider = self.getProvider()
 
