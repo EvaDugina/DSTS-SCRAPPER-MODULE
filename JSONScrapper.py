@@ -70,6 +70,9 @@ def searchRequest(provider_name, search_request):
 
     return
 
+def getSearchResults():
+    return fHandler.getOutputText()
+
 
 if __name__ == "__main__":
     main()

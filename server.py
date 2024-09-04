@@ -33,7 +33,7 @@ async def search(search_requests):
 
 
 def getSearchProgress():
-    return 0
+    return JSONScrapper.getSearchResults()
 
 
 def stop():

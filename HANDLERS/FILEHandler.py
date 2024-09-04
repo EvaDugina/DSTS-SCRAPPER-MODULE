@@ -37,6 +37,7 @@ def moveJSONToCompleted(catalogue_name, search_request):
     os.rename(f'{PATH_JSONS_DIR}/{catalogue_name}/{search_request}.txt', f'{PATH_JSONS_DIR}/{catalogue_name}/{number}_{search_request}.txt')
     shutil.move(f'{PATH_JSONS_DIR}/{catalogue_name}/{number}_{search_request}.txt', f'{PATH_JSONS_DIR}/{catalogue_name}/_completed')
 
+
 def appendToFileOutput(text):
     with open(f'{PATH_LOGS_DIR}/output.txt', 'a+') as f:
         f.write(text + "\n")
@@ -44,7 +45,12 @@ def appendToFileOutput(text):
 def cleanFileOutput():
     open(f'{PATH_LOGS_DIR}/output.txt', 'w').close()
 
-
+def getOutputText():
+    lines = []
+    with open(f'{PATH_LOGS_DIR}/output.txt') as file:
+        for line in file:
+            lines.append(line.strip())
+    return lines
 
 def appendJSONToFile(catalogue_name, text, search_request):
     with open(f'{PATH_JSONS_DIR}/{catalogue_name}/{search_request}.txt', 'a+') as f:
