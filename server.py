@@ -7,7 +7,6 @@ from fastapi import FastAPI, WebSocket
 
 import Decorators
 import JSONScrapper
-import init
 
 HOST = "localhost"
 PORT = 8083
@@ -15,6 +14,7 @@ PORT = 8083
 _proccess = None
 
 app = FastAPI()
+
 
 @Decorators.log_decorator
 async def search(search_requests):
@@ -25,11 +25,12 @@ async def search(search_requests):
     if _proccess is not None:
         stop()
 
-    _proccess = multiprocessing.Process(target=JSONScrapper.searchRequests, args=(search_requests, ))
+    _proccess = multiprocessing.Process(target=JSONScrapper.searchRequests, args=(search_requests,))
     _proccess.start()
-    _proccess.join()
+    # _proccess.join()
 
     print("<< search()")
+
 
 def getSearchProgress():
     return 0
@@ -38,25 +39,23 @@ def getSearchProgress():
 def stop():
     global _proccess
 
-    print(_proccess)
-
     if _proccess is not None:
-        _proccess.kill()
+
         _proccess.terminate()
         time.sleep(0.1)
         if not _proccess.is_alive():
-            _proccess.join(timeout=1.0)
+            _proccess.join()
+
+        _proccess.kill()
 
 
 @Decorators.log_decorator
 async def request_handler(request):
-    print(">> request_handler")
-
     if not "flag" in request:
         return "Некорректный запрос!"
 
     if request["flag"] == "SearchRequests":
-        # search(request["requests"])
+        await search(request["requests"])
         # asyncio.run(search(request["requests"]))
         return "Поиск начат!"
 

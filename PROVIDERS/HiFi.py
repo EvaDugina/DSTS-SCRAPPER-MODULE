@@ -33,7 +33,6 @@ class HiFi(Provider):
     _catalogue_name = "HIFI"
     max_page_cross_ref = 0
     max_page_search = 0
-    _dbHandler = None
 
     _article_cross_ref_json = dict()
     _article_info_json = dict()
@@ -50,8 +49,8 @@ class HiFi(Provider):
     article_id = ""
     article_url = ""
 
-    def __init__(self, producer_id, dbHandler):
-        super().__init__(producer_id, dbHandler)
+    def __init__(self):
+        super().__init__()
         self._playwright = PLAYWRIGHT
 
     def getMainUrl(self):
@@ -63,7 +62,7 @@ class HiFi(Provider):
     def getMaxPage(self):
         return self.max_page
 
-    def getCatalogueName(self):
+    def getName(self):
         return self._catalogue_name
 
     @Decorators.time_decorator
@@ -254,22 +253,6 @@ class HiFi(Provider):
         page.context.close()
         browser.close()
         return b
-
-    def setInfo(self, article_name, producer_name, info_json):
-
-        producer_id = self._dbHandler.getProducerIdByNameAndCatalogueName(producer_name, self._catalogue_name)
-        article_id = self._dbHandler.getArticleByName(article_name, producer_id)[0]
-
-        main_info = info_json['articleMainInfo']
-        secondary_info = info_json['articleSecondaryInfo']
-        output_json = {**main_info, **secondary_info}
-
-        self._dbHandler.insertCharacteristics(main_info)
-
-        type = info_json['articleDescription']
-        url = f"{self._article_url}{article_name}/{info_json['articleSecondaryInfo']['articleId']}"
-
-        self._dbHandler.insertArticleInfo(article_id, self._catalogue_name, url, type, output_json)
 
 
     def saveJSON(self, driver, article_url, article_name, type, search_request, analog_article_name, analog_producer_name):

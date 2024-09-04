@@ -2,11 +2,11 @@
 # -*- coding: utf-8 -*-
 
 # https://stackoverflow.com/questions/63564559/greenlet-error-cannot-switch-to-a-different-thread
-from gevent import monkey
+# from gevent import monkey
 
 import Decorators
 
-monkey.patch_all()
+# monkey.patch_all()
 
 import logging
 
@@ -68,16 +68,16 @@ class ProviderHandler:
     def getProviderByProviderName(self, provider_name):
         if provider_name == "DONALDSON":
             from PROVIDERS.Donaldson import Donaldson
-            return lambda producer_id, dbHandler: Donaldson(producer_id, dbHandler)
+            return Donaldson
         elif provider_name == "HIFI":
             from PROVIDERS.HiFi import HiFi
-            return lambda producer_id, dbHandler: HiFi(producer_id, dbHandler)
+            return HiFi()
         elif provider_name == "MANN":
             from PROVIDERS.Mann import Mann
-            return lambda producer_id, dbHandler: Mann(producer_id, dbHandler)
+            return Mann
         elif provider_name == "FLEETGUARD":
             from PROVIDERS.Fleetguard import Fleetguard
-            return lambda producer_id, dbHandler: Fleetguard(producer_id, dbHandler)
+            return Fleetguard
         # elif provider_name == "SF":
         #     from PROVIDERS.SF import SF
         #     return lambda producer_id, dbHandler: SF(producer_id, dbHandler)
@@ -86,7 +86,7 @@ class ProviderHandler:
         #     return lambda producer_id, dbHandler: Baldwin(producer_id, dbHandler)
         elif provider_name == "FILFILTER":
             from PROVIDERS.FilFilter import FilFilter
-            return lambda producer_id, dbHandler: FilFilter(producer_id, dbHandler)
+            return FilFilter
 
         raise Exception("getProviderByProviderName() incorrect provider name")
 
@@ -109,13 +109,9 @@ class ProviderHandler:
 class Provider:
 
     max_page = 1
-    _dbHandler = None
 
-    def __init__(self, producer_id=None, dbHandler=None):
-        if producer_id is not None and dbHandler is not None:
-            self._producer_id = producer_id
-            self._dbHandler = dbHandler
-            self._producer_name = dbHandler.getProducerById(self._producer_id)
+    def __init__(self):
+        pass
 
     def getMainUrl(self):
         pass
@@ -123,7 +119,7 @@ class Provider:
     def getProductUrl(self, article_name):
         pass
 
-    def getCatalogueName(self):
+    def getName(self):
         pass
 
     @Decorators.log_decorator
@@ -160,9 +156,3 @@ class Provider:
 
     def addAnalogToJSON(self, analog_article_name, analog_producer_name, json):
        pass
-
-    # def getAnalogs(self, article_url, article_id):
-    #     pass
-
-    def setInfo(self, article_name, producer_name, info_json):
-        pass

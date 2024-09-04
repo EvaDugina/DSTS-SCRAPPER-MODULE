@@ -1,27 +1,23 @@
-import threading
+import atexit
+import multiprocessing
 
 from loguru import logger
 from selenium import webdriver
 
-import PROVIDERS.Provider
 from HANDLERS.ERRORHandler import Error
-from PROVIDERS.Provider import ProviderHandler, Providers, Provider
+from PROVIDERS.Provider import ProviderHandler, Provider
 
 try:
     from BeautifulSoup import BeautifulSoup
 except ImportError:
     from bs4 import BeautifulSoup
 
-from HANDLERS import FILEHandler as fHandler, DBHandler as db, JSONHandler
-from UTILS import strings
+from HANDLERS import FILEHandler as fHandler
+
 import Decorators
 
 _THREADS_LIMIT = 4
-
-_provider = None
-_search_request = ""
-_catalogue_name = ""
-
+_process_list = []
 _error = None
 
 
@@ -31,28 +27,25 @@ class WebWorker:
     _search_request = ""
 
     _provider = None
-    _dbHandler = None
 
     def __init__(self, provider_code, request):
         self._provider_name = ProviderHandler().getProviderNameByCode(provider_code)
         self._provider_code = provider_code
         self._search_request = request
-        self._dbHandler = db.DBWorker()
 
         self._provider = self.getProvider()
 
         fHandler.createLINKSDir(self._provider_name)
         fHandler.createJSONSDir(self._provider_name)
 
+    def __del__(self):
+        cleanup()
+
+
     @Decorators.log_decorator
     def getProvider(self) -> Provider:
-
         logger.info(f"САЙТ-ПРОИЗВОДИТЕЛЬ: {self._provider_name.upper()}")
-        producer_id = self._dbHandler.insertProducer(self._provider_name, self._provider_name)
-
-        provider = ProviderHandler().getProviderByProviderCode(self._provider_code)(producer_id, self._dbHandler)
-
-        return provider
+        return getProvider(self._provider_code)
 
     @Decorators.time_decorator
     @Decorators.error_decorator
@@ -78,96 +71,31 @@ class WebWorker:
                 max_page = int(max_page)
 
         # Вытаскиваем ссылки на элементы
-        self.getArticleLINKSByThreads(max_page)
+        getArticleLINKSByThreads(self._provider_code, self._search_request, max_page)
         if _error is not None:
             return _error
 
         # Генерируем JSONS
-        self.generateJSONSbyThreads()
+        generateJSONSbyThreads(self._provider_code, self._search_request)
         if _error is not None:
             return _error
 
-        return Error.SUCCESS
-
-    @Decorators.time_decorator
-    @Decorators.log_decorator
-    def generateJSONSbyThreads(self):
-
-        count_lines = fHandler.getCountLINKSLines(self._provider_name, f"{self._search_request}.txt")
-
-        # Определяем количество потоков
-        count_threads = getCountThreads(count_lines)
-
-        # Распределяем ссылки (части файла) по потокам
-        parts = []
-        count_lines_in_part = count_lines // count_threads
-        offset = 0
-        if count_lines // count_threads != 0:
-            for i in range(0, count_threads):
-                start_index = i * count_lines_in_part + offset
-                if i < count_lines % count_threads:
-                    offset += 1
-                end_index = (i + 1) * count_lines_in_part + offset
-                parts.append([start_index, end_index])
-
-        # Запускаем потоки
-        tasks = []
-        from gevent import monkey
-        monkey.patch_all()
-        for index in range(0, count_threads):
-            tasks.append(threading.Thread(target=parseLINKS, args=(
-            parts[index][0], parts[index][1], self._provider, self._search_request)))
-        for i in range(0, count_threads):
-            tasks[i].start()
-        for i in range(0, count_threads):
-            tasks[i].join()
-
-    @Decorators.time_decorator
-    @Decorators.log_decorator
-    def getArticleLINKSByThreads(self, max_page):
-
-        setGlobals(self._provider, self._search_request)
-        setGlobalCatalogueName(self._provider_name)
-
-        # Определяем количество потоков
-        count_threads = getCountThreads(max_page)
-
-        # Если HiFi то...
-        if self._provider_name == "HIFI":
-            getLINKSbyPage(range(0, max_page))
-
-        elif self._provider_name == "FLEETGUARD":
-            saveArticles(self._provider.parseSearchResult(None))
-
-        else:
-
-            pages = []
-            for j in range(0, count_threads):
-                pages.append([])
-
-            # Распределяем страницы между потоками
-            for i in range(0, max_page // count_threads * count_threads, count_threads):
-                for j in range(0, count_threads):
-                    pages[j].append(i + j)
-            if max_page % count_threads != 0:
-                for i in range((max_page // count_threads) * count_threads, max_page):
-                    pages[i % _THREADS_LIMIT].append(i)
-
-            # Запускаем потоки
-            tasks = []
-            for i in range(0, count_threads):
-                tasks.append(threading.Thread(target=getLINKSbyPage, args=(pages[i],)))
-            for index, thread in enumerate(tasks):
-                thread.start()
-            for thread in tasks:
-                thread.join()
-
-        return
+        return Error.SUCCES
 
 
 #
-# Вспомогательные функции
+# UTILITIES
 #
+
+def getProvider(_provider_code) -> Provider:
+    return ProviderHandler().getProviderByProviderCode(_provider_code)()
+
+def cleanup():
+    global _process_list
+    for process in _process_list:
+        process.kill()
+    _process_list = []
+    print('Cleaned up!')
 
 @Decorators.time_decorator
 @Decorators.error_decorator
@@ -182,17 +110,6 @@ def checkInternetConnection(url='http://www.google.com/'):
         return Error.INTERNET_CONNECTION
 
 
-def setGlobals(provider, search_request):
-    global _provider, _search_request
-    _provider = provider
-    _search_request = search_request
-
-
-def setGlobalCatalogueName(catalogue_name):
-    global _catalogue_name
-    _catalogue_name = catalogue_name
-
-
 @Decorators.log_decorator
 def getBrowser():
     options = webdriver.ChromeOptions()
@@ -202,8 +119,10 @@ def getBrowser():
             'profile.managed_default_content_settings.images': 2,
             'profile.managed_default_content_settings.media_stream': 2,
             'profile.managed_default_content_settings.stylesheets': 2
-        }
+        },
     )
+    # options.add_argument('--headless')
+    # options.headless = True
     driver = webdriver.Chrome(
         options=options
     )
@@ -218,10 +137,56 @@ def getCountThreads(count_elements):
 
 
 @Decorators.time_decorator
+@Decorators.log_decorator
+def getArticleLINKSByThreads(_provider_code, _search_request, max_page):
+    global _process_list
+
+    _provider = getProvider(_provider_code)
+
+    # Определяем количество потоков
+    count_threads = getCountThreads(max_page)
+
+    # Если HiFi то...
+    if _provider.getName() == "HIFI":
+        getLINKSbyPage(range(0, max_page))
+
+    elif _provider.getName() == "FLEETGUARD":
+        saveArticles(_provider.parseSearchResult(None), _search_request, _provider.getName())
+
+    else:
+
+        pages = []
+        for j in range(0, count_threads):
+            pages.append([])
+
+        # Распределяем страницы между потоками
+        for i in range(0, max_page // count_threads * count_threads, count_threads):
+            for j in range(0, count_threads):
+                pages[j].append(i + j)
+        if max_page % count_threads != 0:
+            for i in range((max_page // count_threads) * count_threads, max_page):
+                pages[i % _THREADS_LIMIT].append(i)
+
+        # Запускаем потоки
+        _process_list = []
+        for i in range(0, count_threads):
+            process = multiprocessing.Process(target=getLINKSbyPage,
+                                              args=(_provider_code, _search_request, _provider.getName(), pages[i],))
+            process.start()
+            _process_list.append(process)
+        for process in _process_list:
+            process.join()
+
+        cleanup()
+
+    return
+
+
+@Decorators.time_decorator
 @Decorators.error_decorator
 @Decorators.log_decorator
-def getLINKSbyPage(pages):
-    global _provider, _search_request, _catalogue_name
+def getLINKSbyPage(_provider_code, _search_request, _catalogue_name, pages):
+    _provider = getProvider(_provider_code)
 
     # ПОИСК БРАУЗЕРА ДЛЯ ИСПОЛЬЗОВАНИЯ
     driver = getBrowser()
@@ -231,11 +196,11 @@ def getLINKSbyPage(pages):
 
     for page in pages:
 
-        if _provider.getCatalogueName() == "MANN":
+        if _provider.getName() == "MANN":
             if page >= _provider.max_page_search:
                 break
 
-        if _provider.getCatalogueName() == "MANN":
+        if _provider.getName() == "MANN":
             a = _provider.searchProducts(driver, page, _search_request)
         else:
             a = _provider.search(driver, page, _search_request)
@@ -246,9 +211,9 @@ def getLINKSbyPage(pages):
 
         articles = _provider.parseSearchResult(driver, page)
         if len(articles) > 0:
-            saveArticles(articles)
+            saveArticles(articles, _search_request, _catalogue_name)
 
-    if _provider.getCatalogueName() == "MANN":
+    if _provider.getName() == "MANN":
 
         for page in pages:
 
@@ -262,7 +227,7 @@ def getLINKSbyPage(pages):
 
             articles = _provider.parseCrossReferenceResult(driver, page)
             if len(articles) > 0:
-                saveArticles(articles)
+                saveArticles(articles, _search_request, _catalogue_name)
 
     driver.close()
     driver.quit()
@@ -270,29 +235,49 @@ def getLINKSbyPage(pages):
     return Error.SUCCESS
 
 
+@Decorators.time_decorator
 @Decorators.log_decorator
-def saveArticles(articles):
-    global _search_request, _catalogue_name
+def generateJSONSbyThreads(_provider_code, _search_request):
+    global _process_list
 
-    for article in articles:
-        logger.info(f"{article[0]} - найден!")
+    _provider = getProvider(_provider_code)
 
-        if len(article) == 4:
-            fHandler.appendLINKtoFile(_catalogue_name,
-                                      article[0] + " " + article[1] + " " + article[2] + " " + article[3],
-                                      _search_request)
-        elif len(article) == 3:
-            fHandler.appendLINKtoFile(_catalogue_name, article[0] + " " + article[1] + " " + article[2],
-                                      _search_request)
-        else:
-            fHandler.appendLINKtoFile(_catalogue_name, article[0] + " " + article[1], _search_request)
+    count_lines = fHandler.getCountLINKSLines(_provider.getName(), f"{_search_request}.txt")
+
+    # Определяем количество потоков
+    count_threads = getCountThreads(count_lines)
+
+    # Распределяем ссылки (части файла) по потокам
+    parts = []
+    count_lines_in_part = count_lines // count_threads
+    offset = 0
+    if count_lines // count_threads != 0:
+        for i in range(0, count_threads):
+            start_index = i * count_lines_in_part + offset
+            if i < count_lines % count_threads:
+                offset += 1
+            end_index = (i + 1) * count_lines_in_part + offset
+            parts.append([start_index, end_index])
+
+    # Запускаем потоки
+    _process_list = []
+    for index in range(0, count_threads):
+        process = multiprocessing.Process(target=parseLINKS,
+                                          args=(parts[index][0], parts[index][1], _provider_code, _search_request))
+        process.start()
+        _process_list.append(process)
+    for process in _process_list:
+        process.join()
+
+    cleanup()
+
 
 
 @Decorators.time_decorator
 @Decorators.error_decorator
 @Decorators.log_decorator
-def parseLINKS(start_line, end_line, provider, search_request):
-    # provider = self.getProvider()
+def parseLINKS(start_line, end_line, _provider_code, search_request):
+    provider = getProvider(_provider_code)
 
     # ПОИСК БРАУЗЕРА ДЛЯ ИСПОЛЬЗОВАНИЯ
     driver = getBrowser()
@@ -300,7 +285,7 @@ def parseLINKS(start_line, end_line, provider, search_request):
         _error = Error.UNDEFIND_CHROME_DRIVER
         return Error.UNDEFIND_CHROME_DRIVER
 
-    articles = fHandler.getLINKSfromFileByLines(provider.getCatalogueName(), search_request, start_line, end_line)
+    articles = fHandler.getLINKSfromFileByLines(provider.getName(), search_request, start_line, end_line)
 
     # Проходимся по линиям в файле
     for article in articles:
@@ -325,10 +310,28 @@ def parseLINKS(start_line, end_line, provider, search_request):
         article_json = provider.saveJSON(driver, article[1], article[0], type, search_request, analog_article_name,
                                          analog_producer_name)
 
-        fHandler.appendJSONToFile(provider.getCatalogueName(), article_json, search_request)
+        fHandler.appendJSONToFile(provider.getName(), article_json, search_request)
         logger.success(f'{article[0]} -- взят JSON!')
 
     driver.close()
     driver.quit()
 
     return 0
+
+
+
+@Decorators.log_decorator
+def saveArticles(articles, _search_request, _catalogue_name):
+
+    for article in articles:
+        logger.info(f"{article[0]} - найден!")
+
+        if len(article) == 4:
+            fHandler.appendLINKtoFile(_catalogue_name,
+                                      article[0] + " " + article[1] + " " + article[2] + " " + article[3],
+                                      _search_request)
+        elif len(article) == 3:
+            fHandler.appendLINKtoFile(_catalogue_name, article[0] + " " + article[1] + " " + article[2],
+                                      _search_request)
+        else:
+            fHandler.appendLINKtoFile(_catalogue_name, article[0] + " " + article[1], _search_request)

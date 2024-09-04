@@ -1,4 +1,5 @@
 import time
+from json import JSONDecodeError
 
 from bs4 import BeautifulSoup
 from loguru import logger
@@ -27,8 +28,8 @@ class Donaldson(Provider.Provider):
     _article_url = "https://shop.donaldson.com/store/ru-ru/product/"
     _catalogue_name = "DONALDSON"
 
-    def __init__(self, producer_id, dbHandler):
-        super().__init__(producer_id, dbHandler)
+    def __init__(self):
+        super().__init__()
         self._playwright = PLAYWRIGHT
 
     def getMainUrl(self):
@@ -40,7 +41,7 @@ class Donaldson(Provider.Provider):
     def getMaxPage(self):
         return self.max_page
 
-    def getCatalogueName(self):
+    def getName(self):
         return self._catalogue_name
 
 
@@ -138,31 +139,16 @@ class Donaldson(Provider.Provider):
 
 
     def getArticleType(self, driver) -> str:
-
-        parsed_html = BeautifulSoup(driver.page_source.encode('utf-8'), "html.parser")
+        html = driver.page_source.encode('utf-8')
+        parsed_html = BeautifulSoup(html, "html.parser")
         body = parsed_html.body
+        while body is None or body == "":
+            time.sleep(0.5)
         found = body.find('div', attrs={'class': 'prodSubTitleMob'})
         return found.text
 
     def parseCrossReferenceResult(self, driver, pageNumber):
         pass
-
-
-    def setInfo(self, article_name, producer_name, info_json):
-
-        producer_id = self._dbHandler.getProducerIdByNameAndCatalogueName(producer_name, self._catalogue_name)
-        article_id = self._dbHandler.getArticleByName(article_name, producer_id)[0]
-
-        main_info = info_json['articleMainInfo']
-        secondary_info = info_json['articleSecondaryInfo']
-        output_json = {**main_info, **secondary_info}
-
-        self._dbHandler.insertCharacteristics(main_info)
-
-        type = info_json['articleDescription']
-        url = f"{self._article_url}{article_name}/{info_json['articleSecondaryInfo']['articleId']}"
-
-        self._dbHandler.insertArticleInfo(article_id, self._catalogue_name, url, type, output_json)
 
 
     def saveJSON(self, driver, article_url, article_name, type, search_request, analog_article_name, analog_producer_name):
@@ -184,6 +170,8 @@ class Donaldson(Provider.Provider):
                             data['cross_ref'] = response.json()[
                                 'crossReferenceList']
                     except Error:
+                        pass
+                    except JSONDecodeError:
                         pass
 
             if len(data["info_json"]) < 1:

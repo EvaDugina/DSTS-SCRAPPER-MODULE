@@ -21,7 +21,6 @@ class Mann(Provider.Provider):
     _catalogue_url = ["https://www.mann-filter.com/ru-ru/catalog/search-results.html?mode=smart&smart=", "&smartSearchTerm="]
     _article_url = ["https://www.mann-filter.com/ru-ru/catalog/search-results/product.html/", "_mann-filter.html"]
     _catalogue_name = "MANN"
-    _dbHandler = None
 
     max_page_cross_ref = 0
     max_page_search = 0
@@ -29,8 +28,8 @@ class Mann(Provider.Provider):
     total_search_count = -1
     max_page = -1
 
-    def __init__(self, producer_id, dbHandler):
-        super().__init__(producer_id, dbHandler)
+    def __init__(self):
+        super().__init__()
         self._playwright = PLAYWRIGHT
 
     def getMainUrl(self):
@@ -42,7 +41,7 @@ class Mann(Provider.Provider):
     def getSearchUrl(self, article_name):
         return f"{self._catalogue_url[0]}{article_name}{self._catalogue_url[1]}{article_name}"
 
-    def getCatalogueName(self):
+    def getName(self):
         return self._catalogue_name
 
     def getPageCount(self, driver, search_request):
@@ -214,9 +213,6 @@ class Mann(Provider.Provider):
     def getArticleType(self, driver) -> str:
         WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.CLASS_NAME, 'cmp-product__title-family')))
         return driver.find_element(By.CLASS_NAME, "cmp-product__title-family").text
-
-    def setInfo(self, article_name, producer_name, info_json):
-        pass
 
     def saveJSON(self, driver, article_url, article_name, description, search_request, analog_article_name, analog_producer_name):
 

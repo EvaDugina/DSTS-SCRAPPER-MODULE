@@ -28,12 +28,11 @@ class FilFilter(Provider.Provider):
     _article_url = "https://catalog.filfilter.com.tr/ru/product/"
     _catalogue_name = "FILFILTER"
     _max_page = 1
-    _dbHandler = None
 
     _playwright = None
 
-    def __init__(self, producer_id, dbHandler):
-        super().__init__(producer_id, dbHandler)
+    def __init__(self):
+        super().__init__()
         self._playwright = PLAYWRIGHT
 
     def getMainUrl(self):
@@ -42,7 +41,7 @@ class FilFilter(Provider.Provider):
     def getProductUrl(self, article_name):
         return self._article_url + article_name
 
-    def getCatalogueName(self):
+    def getName(self):
         return self._catalogue_name
 
     def getPageCount(self, driver, search_request):
@@ -105,62 +104,6 @@ class FilFilter(Provider.Provider):
     def getArticleType(self, driver) -> str:
 
         return ""
-
-    # def parseCrossReference(self, main_article_name, producer_name, type, cross_ref):
-    #     main_producer_id = self._dbHandler.insertProducer(producer_name, self._catalogue_name)
-    #     fHandler.appendToFileLog2("----> PRODUCER_ID: " + str(main_producer_id))
-    #
-    #     if type == "real":
-    #         main_article_id = self._dbHandler.insertArticle(main_article_name, main_producer_id, self._catalogue_name,
-    #                                                         0)
-    #     else:
-    #         main_article_id = self._dbHandler.insertArticle(main_article_name, main_producer_id, self._catalogue_name,
-    #                                                         1)
-    #
-    #     last_producer_name = ""
-    #     producer_id = -1
-    #     analog_article_ids = []
-    #     index = 0
-    #     for elem in cross_ref:
-    #         producer_name = elem['producerName']
-    #         if last_producer_name == producer_name:
-    #             article_name = elem['articleNames'][0]
-    #             if elem['type'] == "old":
-    #                 analog_article_id = self._dbHandler.insertArticle(article_name, producer_id, self._catalogue_name,
-    #                                                                   1)
-    #             else:
-    #                 analog_article_id = self._dbHandler.insertArticle(article_name, producer_id, self._catalogue_name)
-    #             analog_article_ids.append(analog_article_id)
-    #
-    #         else:
-    #             if index != 0:
-    #                 self._dbHandler.insertArticleAnalogs(main_article_id, analog_article_ids, self._catalogue_name)
-    #
-    #             last_producer_name = producer_name
-    #
-    #             fHandler.appendToFileLog2("\t--> PRODUCER_NAME: " + str(producer_name))
-    #             producer_id = self._dbHandler.insertProducer(producer_name, self._catalogue_name)
-    #             analog_article_ids = []
-    #
-    #             article_name = elem['articleNames'][0]
-    #             if elem['type'] == "old":
-    #                 analog_article_id = self._dbHandler.insertArticle(article_name, producer_id, self._catalogue_name,
-    #                                                                   1)
-    #             else:
-    #                 analog_article_id = self._dbHandler.insertArticle(article_name, producer_id, self._catalogue_name)
-    #             analog_article_ids.append(analog_article_id)
-    #
-    #         if index == len(cross_ref) - 1:
-    #             self._dbHandler.insertArticleAnalogs(main_article_id, analog_article_ids, self._catalogue_name)
-    #
-    #         index += 1
-
-    # def getAnalogs(self, article_url, article_id):
-    #     pass
-
-    def setInfo(self, article_name, producer_name, info_json):
-
-        pass
 
     def saveJSON(self, driver, article_url, article_name, description, search_request, analog_article_name,
                  analog_producer_name):
