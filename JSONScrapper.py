@@ -15,6 +15,7 @@ from HANDLERS.ERRORHandler import Error
 # https://scrapism.lav.io/scraping-xhr/
 # https://www.zenrows.com/blog/selenium-python-web-scraping#add-real-headers
 # https://www.zenrows.com/blog/web-scraping-without-getting-blocked#why-is-web-scraping-not-allowed
+from PROVIDERS import Provider
 from PROVIDERS.Provider import ProviderHandler
 
 
@@ -49,7 +50,12 @@ def searchRequests(search_requests):
     logger.debug(f"searchRequests({search_requests})")
 
     for request in search_requests:
-        searchRequest(request[0], request[1])
+        if request[0] == "ВСЕ":
+            for provider in Provider.Providers:
+                if provider["active"]:
+                    searchRequest(provider["name"], request[1])
+        else:
+            searchRequest(request[0], request[1])
 
     elements = fHandler.getElementsForParse()
     JSONParser.parseElements(elements)
