@@ -18,6 +18,8 @@ from HANDLERS.ERRORHandler import Error
 from PROVIDERS.Provider import ProviderHandler
 
 
+FLAG_END = True
+
 @Decorators.error_decorator
 def main():
     init.init()
@@ -37,12 +39,14 @@ def main():
 
 @Decorators.time_decorator
 def searchRequests(search_requests):
+    global FLAG_END
+
     init.init()
 
-    logger.debug(f"searchRequests({search_requests})")
-    logger.debug(search_requests)
-
+    FLAG_END = False
     fHandler.cleanFileOutput()
+
+    logger.debug(f"searchRequests({search_requests})")
 
     for request in search_requests:
         searchRequest(request[0], request[1])
@@ -50,11 +54,12 @@ def searchRequests(search_requests):
     elements = fHandler.getElementsForParse()
     JSONParser.parseElements(elements)
 
+    FLAG_END = True
+
     exit(0)
 
 
 def searchRequest(provider_name, search_request):
-
     provider_code = ProviderHandler().getProviderCodeByName(provider_name)
     if provider_code is None or not ProviderHandler().isActive(provider_code):
         return
@@ -64,7 +69,7 @@ def searchRequest(provider_name, search_request):
     webWorker = wHandler.WebWorker(provider_code, search_request)
     webWorker.pullCrossRefToDB()
 
-    fHandler.moveLINKToCompleted(provider_name, search_request)
+    fHandler.removeLINKFile(provider_name, search_request)
 
     logger.debug("<<<< SEARCH REQUEST: " + search_request)
 

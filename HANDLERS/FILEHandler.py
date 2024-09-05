@@ -26,17 +26,39 @@ def createJSONSDir(catalogue_name):
     Path(f'{PATH_JSONS_DIR}/{catalogue_name}/_completed/').mkdir(parents=True, exist_ok=True)
 
 
+def cleanLINKSAndJSONSDir():
+    import os, shutil
+    for filename in os.listdir(PATH_JSONS_DIR):
+        file_path = os.path.join(PATH_JSONS_DIR, filename)
+        try:
+            if os.path.isfile(file_path) or os.path.islink(file_path):
+                os.unlink(file_path)
+            elif os.path.isdir(file_path):
+                shutil.rmtree(file_path)
+        except Exception as e:
+            print('Failed to delete %s. Reason: %s' % (file_path, e))
+    for filename in os.listdir(PATH_LINKS_DIR):
+        file_path = os.path.join(PATH_LINKS_DIR, filename)
+        try:
+            if os.path.isfile(file_path) or os.path.islink(file_path):
+                os.unlink(file_path)
+            elif os.path.isdir(file_path):
+                shutil.rmtree(file_path)
+        except Exception as e:
+            print('Failed to delete %s. Reason: %s' % (file_path, e))
 
-def moveLINKToCompleted(catalogue_name, search_request):
-    number = getCountCompleatedLINKSFiles(catalogue_name) + 1
-    os.rename(f'{PATH_LINKS_DIR}/{catalogue_name}/{search_request}.txt', f'{PATH_LINKS_DIR}/{catalogue_name}/{number}_{search_request}.txt')
-    shutil.move(f'{PATH_LINKS_DIR}/{catalogue_name}/{number}_{search_request}.txt', f'{PATH_LINKS_DIR}/{catalogue_name}/_completed')
 
-def moveJSONToCompleted(catalogue_name, search_request):
-    number = getCountCompleatedJSONSFiles(catalogue_name) + 1
-    os.rename(f'{PATH_JSONS_DIR}/{catalogue_name}/{search_request}.txt', f'{PATH_JSONS_DIR}/{catalogue_name}/{number}_{search_request}.txt')
-    shutil.move(f'{PATH_JSONS_DIR}/{catalogue_name}/{number}_{search_request}.txt', f'{PATH_JSONS_DIR}/{catalogue_name}/_completed')
+def removeLINKFile(catalogue_name, search_request):
+    # number = getCountCompleatedLINKSFiles(catalogue_name) + 1
+    # os.rename(f'{PATH_LINKS_DIR}/{catalogue_name}/{search_request}.txt', f'{PATH_LINKS_DIR}/{catalogue_name}/{number}_{search_request}.txt')
+    # shutil.move(f'{PATH_LINKS_DIR}/{catalogue_name}/{number}_{search_request}.txt', f'{PATH_LINKS_DIR}/{catalogue_name}/_completed')
+    os.remove(f'{PATH_LINKS_DIR}/{catalogue_name}/{search_request}.txt')
 
+def removeJSONFile(catalogue_name, search_request):
+    # number = getCountCompleatedJSONSFiles(catalogue_name) + 1
+    # os.rename(f'{PATH_JSONS_DIR}/{catalogue_name}/{search_request}.txt', f'{PATH_JSONS_DIR}/{catalogue_name}/{number}_{search_request}.txt')
+    # shutil.move(f'{PATH_JSONS_DIR}/{catalogue_name}/{number}_{search_request}.txt', f'{PATH_JSONS_DIR}/{catalogue_name}/_completed')
+    os.remove(f'{PATH_JSONS_DIR}/{catalogue_name}/{search_request}.txt')
 
 def appendToFileOutput(text):
     with open(f'{PATH_LOGS_DIR}/output.txt', 'a+') as f:

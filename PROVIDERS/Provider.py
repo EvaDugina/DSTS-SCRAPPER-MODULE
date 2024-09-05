@@ -102,7 +102,7 @@ class ProviderHandler:
         return None
 
     def getArticleBaseURLbyProviderName(self, provider_name, article_name):
-        provider = self.getProviderByProviderName(provider_name)(None, None)
+        provider = self.getProviderByProviderName(provider_name)()
         return provider.getProductUrl(article_name)
 
 

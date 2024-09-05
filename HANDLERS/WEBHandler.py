@@ -80,7 +80,7 @@ class WebWorker:
         if _error is not None:
             return _error
 
-        return Error.SUCCES
+        return Error.SUCCESS
 
 
 #

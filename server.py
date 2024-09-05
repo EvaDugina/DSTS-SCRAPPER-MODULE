@@ -7,6 +7,8 @@ from fastapi import FastAPI, WebSocket
 
 import Decorators
 import JSONScrapper
+from HANDLERS import FILEHandler
+from UTILS import parse
 
 HOST = "localhost"
 PORT = 8083
@@ -25,6 +27,8 @@ async def search(search_requests):
     if _proccess is not None:
         stop()
 
+    JSONScrapper.FLAG_END = False
+
     _proccess = multiprocessing.Process(target=JSONScrapper.searchRequests, args=(search_requests,))
     _proccess.start()
     # _proccess.join()
@@ -33,7 +37,10 @@ async def search(search_requests):
 
 
 def getSearchProgress():
-    return JSONScrapper.getSearchResults()
+    output = parse.parseOutputFile(JSONScrapper.getSearchResults())
+
+    flag_end = JSONScrapper.FLAG_END
+    return {"flag_end": flag_end, "progress": output}
 
 
 def stop():
@@ -47,6 +54,8 @@ def stop():
             _proccess.join()
 
         _proccess.kill()
+
+    FILEHandler.cleanLINKSAndJSONSDir()
 
 
 @Decorators.log_decorator

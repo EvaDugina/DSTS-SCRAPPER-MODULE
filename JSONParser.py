@@ -27,7 +27,6 @@ _flag_has_error = False
 @Decorators.error_decorator
 @Decorators.log_decorator
 def parseJSONSbyThreads(catalogue_name, search_request):
-
     global _catalogue_name, _search_request
 
     _catalogue_name = catalogue_name
@@ -69,7 +68,6 @@ def parseJSONSbyThreads(catalogue_name, search_request):
 @Decorators.time_decorator
 @Decorators.log_decorator
 def parseJSONS(start_line, end_line):
-    global _dbHandler
 
     json_lines = fHandler.getJSONSfromFileByLines(_catalogue_name, _search_request, start_line, end_line)
 
@@ -90,6 +88,7 @@ def parseJSON(main_article_name, main_producer_name, type, json_info, catalogue_
     global _dbHandler, _flag_has_error
 
     import psycopg2
+    main_article_id = None
     try:
         main_producer_id = _dbHandler.insertProducer(main_producer_name, catalogue_name)
         # print("----> PRODUCER_ID: " + str(main_producer_id))
@@ -101,7 +100,7 @@ def parseJSON(main_article_name, main_producer_name, type, json_info, catalogue_
         _flag_has_error = True
         exit()
 
-    fHandler.appendToFileOutput(f'{catalogue_name}|{main_article_name}|{main_producer_name}')
+    fHandler.appendToFileOutput(f'! {catalogue_name} | {main_article_id} | {main_article_name} | {main_producer_name}')
 
     cross_ref = json_info['crossReference']
     parseCrossReference(_dbHandler, catalogue_name, cross_ref, main_article_id)
@@ -120,10 +119,11 @@ def parseCrossReference(_dbHandler, catalogue_name, cross_ref, main_article_id):
         # print("\t--> PRODUCER_NAME: " + str(producer_name))
 
         import psycopg2
+        analog_article_names = []
+        analog_article_ids = []
         try:
             producer_id = _dbHandler.insertProducer(producer_name, catalogue_name)
             analog_article_names = elem['articleNames']
-            analog_article_ids = []
             for article_name in analog_article_names:
                 analog_article_id = _dbHandler.insertArticle(article_name, producer_id, catalogue_name,
                                                              convertTypeToDigits(elem['type']))
@@ -134,8 +134,8 @@ def parseCrossReference(_dbHandler, catalogue_name, cross_ref, main_article_id):
             _flag_has_error = True
             exit()
 
-        for analog_article_name in analog_article_names:
-            fHandler.appendToFileOutput(f'> {analog_article_name}|{producer_name}')
+        for index, analog_article_name in enumerate(analog_article_names):
+            fHandler.appendToFileOutput(f'> {analog_article_ids[index]} | {analog_article_name} | {producer_name}')
 
 
 @Decorators.log_decorator
@@ -155,6 +155,8 @@ def convertTypeToDigits(type):
 
 @Decorators.error_decorator
 def main():
+    global _dbHandler
+
     init.init()
 
     _dbHandler = dbHandler.DBWorker()
@@ -174,6 +176,8 @@ def main():
 
 @Decorators.error_decorator
 def parseElements(elements):
+    global _dbHandler
+
     # init.init()
     _dbHandler = dbHandler.DBWorker()
 
@@ -188,11 +192,13 @@ def parseElements(elements):
 
         parseElement(catalogue_name, search_request)
 
+    return
+
 
 def parseElement(catalogue_name, search_request):
     logger.debug(">>>> SEARCH REQUEST: " + search_request)
     parseJSONSbyThreads(catalogue_name, search_request)
-    fHandler.moveJSONToCompleted(catalogue_name, search_request)
+    fHandler.removeJSONFile(catalogue_name, search_request)
     logger.debug("<<<< SEARCH REQUEST: " + search_request)
 
 

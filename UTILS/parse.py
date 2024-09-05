@@ -55,3 +55,40 @@ def convertSpacesToURLSpaces(str):
 
 def hasDigits(str):
     return any(chr.isdigit() for chr in str)
+
+def parseOutputFile(output_file_lines):
+    output = []
+    catalogue_name = ""
+    for line in output_file_lines:
+        if len(line) < 1:
+            continue
+
+        if line[0] == "!":
+            line_elems = line.replace("! ", "").split(" | ")
+            catalogue_name = line_elems[0]
+            main_article_array = {
+                "type": "main_article",
+                "catalogue_name": line_elems[0],
+                "article_id": line_elems[1],
+                "article_name": line_elems[2],
+                "producer_name": line_elems[3]
+            }
+            output.append(main_article_array)
+        elif line[0] == ">":
+            line_elems = line.replace("> ", "").split(" | ")
+            analog = {
+                "type": "analog_article",
+                "article_id": line_elems[0],
+                "article_name": line_elems[1],
+                "catalogue_name": catalogue_name,
+                "producer_name": line_elems[2]
+            }
+            output.append(analog)
+        else:
+            output.append({
+                "type": "text",
+                "text": line
+            })
+
+    return output
+
