@@ -3,6 +3,8 @@ import multiprocessing
 
 from loguru import logger
 from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
 
 from HANDLERS.ERRORHandler import Error
 from PROVIDERS.Provider import ProviderHandler, Provider
@@ -39,7 +41,7 @@ class WebWorker:
         fHandler.createJSONSDir(self._provider_name)
 
     def __del__(self):
-        cleanup()
+        cleanup("__del__()")
 
 
     @Decorators.log_decorator
@@ -90,12 +92,14 @@ class WebWorker:
 def getProvider(_provider_code) -> Provider:
     return ProviderHandler().getProviderByProviderCode(_provider_code)()
 
-def cleanup():
+def cleanup(text=""):
     global _process_list
+    proccess_count = len(_process_list)
     for process in _process_list:
         process.kill()
     _process_list = []
-    print('Cleaned up!')
+    text = f"{text}{':' if len(text) >= 0 else ''} "
+    print(f'{text}{proccess_count} proccess cleaned up!')
 
 @Decorators.time_decorator
 @Decorators.error_decorator
@@ -112,6 +116,12 @@ def checkInternetConnection(url='http://www.google.com/'):
 
 @Decorators.log_decorator
 def getBrowser():
+    # service = ChromeDriverService.CreateDefaultService()
+    # service.EnableVerboseLogging = true;
+    #
+    # webDriver = new
+    # ChromeDriver(service, options);
+
     options = webdriver.ChromeOptions()
     options.add_experimental_option(
         "prefs", {
@@ -121,11 +131,12 @@ def getBrowser():
             'profile.managed_default_content_settings.stylesheets': 2
         },
     )
-    # options.add_argument('--headless')
-    # options.headless = True
-    driver = webdriver.Chrome(
-        options=options
-    )
+    options.add_argument('--headless')
+    options.add_argument('--no-sandbox')
+
+    # https://stackoverflow.com/questions/29858752/error-message-chromedriver-executable-needs-to-be-available-in-the-path/52878725#52878725
+    service = Service(ChromeDriverManager().install())
+    driver = webdriver.Chrome(options=options, service=service)
     return driver
 
 
@@ -177,7 +188,7 @@ def getArticleLINKSByThreads(_provider_code, _search_request, max_page):
         for process in _process_list:
             process.join()
 
-        cleanup()
+        cleanup("getArticleLINKSByThreads()")
 
     return
 
@@ -269,7 +280,7 @@ def generateJSONSbyThreads(_provider_code, _search_request):
     for process in _process_list:
         process.join()
 
-    cleanup()
+    cleanup("generateJSONSbyThreads()")
 
 
 

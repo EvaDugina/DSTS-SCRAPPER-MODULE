@@ -1,9 +1,19 @@
-# https://devops.org.ru/dockerfile-summary#d16
+# Clone the repository
+# RUN git pull
 
-FROM python:3.10.9
+FROM python:3.10
 
-WORKDIR .
+WORKDIR ./workdir
+
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+
 COPY . .
-RUN pip install -r requirements.txt --no-cache-dir
 
-CMD uvicorn server:app --port 8083 --reload
+# Expose port 2000 (if required)
+EXPOSE 5000
+
+# Specify the command to run the Python application
+CMD ["python", "./server.py"]
+
+

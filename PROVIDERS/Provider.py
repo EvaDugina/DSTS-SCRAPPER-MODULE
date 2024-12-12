@@ -71,7 +71,7 @@ class ProviderHandler:
             return Donaldson
         elif provider_name == "HIFI":
             from PROVIDERS.HiFi import HiFi
-            return HiFi()
+            return HiFi
         elif provider_name == "MANN":
             from PROVIDERS.Mann import Mann
             return Mann
