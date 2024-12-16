@@ -1,9 +1,11 @@
 import json
-
 import psycopg2
+
 from loguru import logger
 
+
 import Decorators
+import config
 
 from UTILS import parse
 
@@ -13,8 +15,8 @@ class DBWorker:
     FLAG_REWRITE_DATA = True
 
     def __init__(self):
-        self.CONNECTION = psycopg2.connect(dbname='dsts', user='dsts', port='5432',
-                                           password='123456', host="localhost")
+        self.CONNECTION = psycopg2.connect(dbname=config.DB_NAME, user=config.DB_USER, port=config.DB_PORT,
+                                           password=config.DB_PASSWORD, host=config.DB_HOST)
 
     @Decorators.log_decorator
     def getArticleById(self, article_id) -> list:

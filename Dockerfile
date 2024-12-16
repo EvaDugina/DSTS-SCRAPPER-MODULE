@@ -1,19 +1,15 @@
-# Clone the repository
-# RUN git pull
+FROM selenium/standalone-chrome:4.27
 
-FROM python:3.10
+WORKDIR ./python_scrapper
 
-WORKDIR ./workdir
-
+USER root
 COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+RUN python3 -m pip install -r requirements.txt --break-system-packages
 
 COPY . .
 
-# Expose port 2000 (if required)
 EXPOSE 5000
 
-# Specify the command to run the Python application
-CMD ["python", "./server.py"]
+CMD ["uvicorn", "server:app", "--reload", "--port", "5000", "--host", "0.0.0.0"]
 
 
