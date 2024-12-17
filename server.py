@@ -105,7 +105,7 @@ async def main(websocket: WebSocket):
 
 
 # КОМАНДА ЗАПУСКА
-# uvicorn server:app --reload --port 8083 --host localhost
+# uvicorn server:app --reload --port 5000 --host localhost
 
 if __name__ == "__main__":
     print("SERVER STARTING")
