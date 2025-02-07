@@ -2,10 +2,8 @@ from gevent import monkey
 monkey.patch_all()
 
 import json
-import time
 
 import gevent
-from loguru import logger
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError, Error
 from selenium.common import WebDriverException
 from selenium.webdriver.common.by import By

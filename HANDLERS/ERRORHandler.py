@@ -1,10 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from loguru import logger
 from enum import Enum
 
-from HANDLERS import FILEHandler
+from HANDLERS import LOGHandler
 from UTILS import strings
 
 
@@ -38,12 +37,10 @@ class ErrorHandler:
         elif error_code == Error.DB_ERROR:
             error_text = "Ошибка! Сбой в работе с базой данных!"
         else:
-            return
+            error_text = error_code
 
         text = f"{function_name}() | {error_text}"
-
-        logger.error(text)
-        FILEHandler.appendToFileOutput(error_text)
+        LOGHandler.logError(text)
 
         exit(error_code)
 

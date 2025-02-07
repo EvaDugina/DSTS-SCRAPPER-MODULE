@@ -1,9 +1,7 @@
 import json
 import psycopg2
 
-from loguru import logger
-
-
+from HANDLERS import LOGHandler
 import Decorators
 import config
 
@@ -202,7 +200,7 @@ class DBWorker:
             self.CONNECTION.commit()
             article_id = cursor.fetchone()[0]
 
-            logger.success(f"INSERTED ARTICLE: {article_id} - {article_name} {producer_id}")
+            LOGHandler.logProgress(f"INSERTED ARTICLE: {article_id} - {article_name} {producer_id}")
         else:
             article = self.getArticleByName(article_name, producer_id)
             article_id = article[0]
@@ -245,7 +243,7 @@ class DBWorker:
             # Добавляем себя в вариации но только в первый раз
             self.insertProducerNameVariation(producer_id, producer_name_with_spaces, catalogue_name)
 
-            logger.success(f"INSERTED PRODUCER: {producer_id} - '{producer_name_with_spaces}'")
+            LOGHandler.logProgress(f"INSERTED PRODUCER: {producer_id} - '{producer_name_with_spaces}'")
         else:
             producer = self.getProducerByName(producer_name_with_spaces)
             producer_id = producer[0]
@@ -278,7 +276,7 @@ class DBWorker:
         for analog_article_id in analog_article_ids:
             # if not self.isAnalogInComparisonTable(article_id, analog_article_id, catalogue_name):
             query += queryInsertArticlesComparison(group_id, analog_article_id, catalogue_name)
-            logger.success(f"INSERTED ANALOGS: {article_id} {analog_article_id}")
+            LOGHandler.logProgress(f"INSERTED ANALOGS: {article_id} {analog_article_id}")
 
         if query != "":
             cursor = self.CONNECTION.cursor()
@@ -310,7 +308,7 @@ class DBWorker:
         cursor.execute(query)
         self.CONNECTION.commit()
 
-        logger.success(f"INSERTED ANALOG group_id={group_id}: {article_id}")
+        LOGHandler.logProgress(f"INSERTED ANALOG group_id={group_id}: {article_id}")
 
         return group_id
 
@@ -326,7 +324,7 @@ class DBWorker:
             cursor.execute(query)
             self.CONNECTION.commit()
 
-            logger.success(f"INSERTED PRODUCER_NAME_VARIATION: {producer_id} - {name_variation} - {catalogue_name}")
+            LOGHandler.logProgress(f"INSERTED PRODUCER_NAME_VARIATION: {producer_id} - {name_variation} - {catalogue_name}")
 
     @Decorators.log_decorator
     def insertArticleNameVariation(self, article_id, name_variation, catalogue_name):
@@ -340,7 +338,7 @@ class DBWorker:
             cursor.execute(query)
             self.CONNECTION.commit()
 
-            logger.success(f"INSERTED ARTICLE_NAME_VARIATION: {article_id} - {name_variation} - {catalogue_name}")
+            LOGHandler.logProgress(f"INSERTED ARTICLE_NAME_VARIATION: {article_id} - {name_variation} - {catalogue_name}")
 
     @Decorators.log_decorator
     def insertArticleInfo(self, article_id, catalogue_name, url, type, output_json):
@@ -356,7 +354,7 @@ class DBWorker:
         cursor.execute(query)
         self.CONNECTION.commit()
 
-        logger.success(f"INSERTED ARTICLE INFO: {article_id} - {catalogue_name}")
+        LOGHandler.logProgress(f"INSERTED ARTICLE INFO: {article_id} - {catalogue_name}")
 
     @Decorators.log_decorator
     def insertCharacteristics(self, charachterictics_json):

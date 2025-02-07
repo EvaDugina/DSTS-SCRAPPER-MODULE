@@ -2,7 +2,6 @@ import time
 from json import JSONDecodeError
 
 from bs4 import BeautifulSoup
-from loguru import logger
 from selenium.common import WebDriverException, JavascriptException
 from selenium.webdriver.common.by import By
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError, Error

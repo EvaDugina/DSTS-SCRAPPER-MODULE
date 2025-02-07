@@ -1,12 +1,12 @@
 import atexit
 import multiprocessing
 
-from loguru import logger
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 
 from HANDLERS.ERRORHandler import Error
+from HANDLERS import LOGHandler
 from PROVIDERS.Provider import ProviderHandler, Provider
 
 try:
@@ -46,7 +46,7 @@ class WebWorker:
 
     @Decorators.log_decorator
     def getProvider(self) -> Provider:
-        logger.info(f"САЙТ-ПРОИЗВОДИТЕЛЬ: {self._provider_name.upper()}")
+        LOGHandler.logInfo(f"САЙТ-ПРОИЗВОДИТЕЛЬ: {self._provider_name.upper()}")
         return getProvider(self._provider_code)
 
     @Decorators.time_decorator
@@ -322,7 +322,7 @@ def parseLINKS(start_line, end_line, _provider_code, search_request):
                                          analog_producer_name)
 
         fHandler.appendJSONToFile(provider.getName(), article_json, search_request)
-        logger.success(f'{article[0]} -- взят JSON!')
+        LOGHandler.logInfo(f'{article[0]} -- взят JSON!')
 
     driver.close()
     driver.quit()
@@ -335,7 +335,7 @@ def parseLINKS(start_line, end_line, _provider_code, search_request):
 def saveArticles(articles, _search_request, _catalogue_name):
 
     for article in articles:
-        logger.info(f"{article[0]} - найден!")
+        LOGHandler.logInfo(f"{article[0]} - найден!")
 
         if len(article) == 4:
             fHandler.appendLINKtoFile(_catalogue_name,

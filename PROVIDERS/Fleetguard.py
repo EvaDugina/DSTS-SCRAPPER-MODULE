@@ -1,16 +1,11 @@
-import time
-
 import gevent
-from loguru import logger
 from selenium.common import WebDriverException
 from selenium.webdriver.common.by import By
-from playwright.sync_api import TimeoutError as PlaywrightTimeoutError, Error
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 from PROVIDERS import Provider
 from HANDLERS import FILEHandler as fHandler, JSONHandler as parseJSON, JSONHandler, PLAYWRIGHTHandler
-from UTILS import strings, parse
 
 PLAYWRIGHT = PLAYWRIGHTHandler.PLAYWRIGHT
 

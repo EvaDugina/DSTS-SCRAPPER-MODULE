@@ -4,8 +4,6 @@ import shutil
 from os import listdir
 from pathlib import Path
 
-from loguru import logger
-
 PATH_LOGS_DIR = "LOGS"
 PATH_JSONS_DIR = "JSONS"
 PATH_LINKS_DIR = "LINKS"
@@ -60,6 +58,10 @@ def removeJSONFile(catalogue_name, search_request):
     # shutil.move(f'{PATH_JSONS_DIR}/{catalogue_name}/{number}_{search_request}.txt', f'{PATH_JSONS_DIR}/{catalogue_name}/_completed')
     os.remove(f'{PATH_JSONS_DIR}/{catalogue_name}/{search_request}.txt')
 
+#
+#
+#
+
 def appendToFileOutput(text):
     with open(f'{PATH_LOGS_DIR}/output.txt', 'a+') as f:
         f.write(text + "\n")
@@ -73,6 +75,43 @@ def getOutputText():
         for line in file:
             lines.append(line.strip())
     return lines
+
+#
+#
+#
+
+# def appendToFileProgress(text):
+#     with open(f'{PATH_LOGS_DIR}/progress.log', 'a+') as f:
+#         f.write(text + "\n")
+
+def cleanFileProgress():
+    open(f'{PATH_LOGS_DIR}/progress.log', 'w').close()
+
+def getFileProgressText():
+    lines = []
+    with open(f'{PATH_LOGS_DIR}/progress.log') as file:
+        for line in file:
+            lines.append(line.strip())
+    return lines
+
+#
+#
+#
+
+def appendToFileLog(text, file_log_name):
+    with open(f'{PATH_LOGS_DIR}/{file_log_name}.log', 'a+') as f:
+        f.write(text + "\n")
+
+def getLogText(file_log_name):
+    lines = []
+    with open(f'{PATH_LOGS_DIR}/{file_log_name}.log') as file:
+        for line in file:
+            lines.append(line.strip())
+    return lines
+
+#
+#
+#
 
 def appendJSONToFile(catalogue_name, text, search_request):
     with open(f'{PATH_JSONS_DIR}/{catalogue_name}/{search_request}.txt', 'a+') as f:

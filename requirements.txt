@@ -1,7 +1,6 @@
 beautifulsoup4==4.12.3
 fastapi==0.112.2
 gevent==24.2.1
-loguru==0.7.2
 playwright==1.46.0
 psycopg2-binary==2.9.3
 selenium==4.24.0

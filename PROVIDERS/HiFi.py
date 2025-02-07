@@ -5,7 +5,6 @@ import json
 import time
 
 import gevent
-from loguru import logger
 from selenium.common import WebDriverException
 from selenium.webdriver.common.by import By
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError, Error

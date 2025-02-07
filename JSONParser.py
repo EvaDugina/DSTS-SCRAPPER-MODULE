@@ -2,11 +2,8 @@
 
 from gevent import monkey
 
-import datetime
 import json
 import threading
-
-from loguru import logger
 
 import Decorators
 import init
@@ -96,9 +93,8 @@ def parseJSON(main_article_name, main_producer_name, type, json_info, catalogue_
         main_article_id = _dbHandler.insertArticle(main_article_name, main_producer_id, catalogue_name,
                                                    convertTypeToDigits(type))
     except psycopg2.Error as err:
-        logger.error(err)
         _flag_has_error = True
-        exit()
+        return err
 
     fHandler.appendToFileOutput(f'! {catalogue_name} | {main_article_id} | {main_article_name} | {main_producer_name}')
 
@@ -130,9 +126,8 @@ def parseCrossReference(_dbHandler, catalogue_name, cross_ref, main_article_id):
                 analog_article_ids.append(analog_article_id)
             _dbHandler.insertArticleAnalogs(main_article_id, analog_article_ids, catalogue_name)
         except psycopg2.Error as err:
-            logger.error(err)
             _flag_has_error = True
-            exit()
+            return err
 
         for index, analog_article_name in enumerate(analog_article_names):
             fHandler.appendToFileOutput(f'> {analog_article_ids[index]} | {analog_article_name} | {producer_name}')
@@ -154,14 +149,13 @@ def convertTypeToDigits(type):
         return 0
 
 @Decorators.error_decorator
+@Decorators.log_decorator
 def main():
     global _dbHandler
 
     init.init()
 
     _dbHandler = dbHandler.DBWorker()
-
-    logger.debug("JSONParser.py")
     elements = fHandler.getElementsForParse()
 
     if len(elements) < 1:
@@ -175,13 +169,12 @@ def main():
 
 
 @Decorators.error_decorator
+@Decorators.log_decorator
 def parseElements(elements):
     global _dbHandler
 
     # init.init()
     _dbHandler = dbHandler.DBWorker()
-
-    logger.debug("parseElements()")
 
     if len(elements) < 1:
         return Error.NOTHING_TO_PARSE
@@ -194,12 +187,11 @@ def parseElements(elements):
 
     return
 
-
+@Decorators.time_decorator
+@Decorators.log_decorator
 def parseElement(catalogue_name, search_request):
-    logger.debug(">>>> SEARCH REQUEST: " + search_request)
     parseJSONSbyThreads(catalogue_name, search_request)
     fHandler.removeJSONFile(catalogue_name, search_request)
-    logger.debug("<<<< SEARCH REQUEST: " + search_request)
 
 
 if __name__ == "__main__":

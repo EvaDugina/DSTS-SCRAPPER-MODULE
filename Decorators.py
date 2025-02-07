@@ -1,9 +1,7 @@
 import time
 from functools import wraps
 
-from loguru import logger
-
-from HANDLERS import FILEHandler as fHandler
+from HANDLERS import LOGHandler
 from HANDLERS.ERRORHandler import ErrorHandler, Error
 
 
@@ -21,10 +19,10 @@ def error_decorator(function):
 def log_decorator(function):
     @wraps(function)
     def log_decorator(*args, **kwargs):
-        # args_repr = [repr(a) for a in args]
-        # kwargs_repr = [f"{k}={v!r}" for k, v in kwargs.items()]
-        # signature = ", ".join(args_repr + kwargs_repr)
-        logger.debug(f">> {function.__name__}()")
+        args_repr = [repr(a) for a in args]
+        kwargs_repr = [f"{k}={v!r}" for k, v in kwargs.items()]
+        signature = ", ".join(args_repr + kwargs_repr)
+        LOGHandler.logDebug(function.__name__, signature)
         result = function(*args, **kwargs)
         return result
 
@@ -37,7 +35,7 @@ def time_decorator(function):
         start = time.perf_counter()
         result = function(*args, **kwargs)
         runtime = time.perf_counter() - start
-        logger.debug(f"<< {function.__name__}(): {runtime:.10f}")
+        LOGHandler.logInfo(function.__name__, runtime, result)
         return result
 
     return time_decorator
