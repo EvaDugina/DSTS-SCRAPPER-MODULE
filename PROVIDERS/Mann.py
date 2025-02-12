@@ -149,7 +149,7 @@ class Mann(Provider.Provider):
             selector.find_elements(By.TAG_NAME, "option")[page_number].click()
         return True
 
-    def searchCrossRef(self, driver, page_number, search_request):
+    def searchCrossRef(self, driver, page_number):
         driver.get(self.getSearchUrl(self.search_request))
 
         self.choseCrossRef(driver)

@@ -48,7 +48,6 @@ def parseJSONSbyThreads(catalogue_name, search_request):
 
     # Запускаем потоки
     tasks = []
-    monkey.patch_all()
     for i in range(0, count_threads):
         tasks.append(threading.Thread(target=parseJSONS, args=(parts[i][0], parts[i][1])))
     for i in range(0, count_threads):
@@ -58,8 +57,6 @@ def parseJSONSbyThreads(catalogue_name, search_request):
 
     if _flag_has_error:
         return Error.DB_ERROR
-
-    return Error.SUCCESS
 
 
 @Decorators.time_decorator

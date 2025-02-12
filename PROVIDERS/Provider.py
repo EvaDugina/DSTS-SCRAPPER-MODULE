@@ -110,6 +110,12 @@ class Provider:
 
     max_page = 1
 
+    # FOR MANN
+    max_page_search = 0
+    max_page_cross_ref = 0
+    total_cross_ref_count = -1
+    total_search_count = -1
+
     def __init__(self):
         pass
 
@@ -132,6 +138,16 @@ class Provider:
 
     @Decorators.log_decorator
     def search(self, driver, page_number, search_request):
+        pass
+
+    # FOR MANN
+    @Decorators.log_decorator
+    def searchCrossRef(self, driver, page_number):
+        pass
+
+    # FOR MANN
+    @Decorators.log_decorator
+    def searchProducts(self, driver, page_number, search_request):
         pass
 
     @Decorators.log_decorator

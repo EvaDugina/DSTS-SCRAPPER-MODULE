@@ -1,41 +1,74 @@
 import logging
 # https://habr.com/ru/companies/wunderfund/articles/683880/
+import datetime
 
 from HANDLERS import FILEHandler
 
 PATH_LOGS_DIR = "LOGS"
-FILE_LOG_NAME = "log"
+DEFAULT_FILE_LOG = "default"
+FILE_PROGRESS = "progress"
 
+def generateFileLogName():
+    now = datetime.datetime.now()
+    return "log_" + now.strftime('%Y%m%d-%H%M%S')
+
+def getCurrentLogFile():
+    global DEFAULT_FILE_LOG
+    file_name = FILEHandler.getLastLogFileName()
+    if file_name is None:
+        return DEFAULT_FILE_LOG
+    else:
+        return file_name.split(".")[0]
+
+
+FILE_LOG = getCurrentLogFile()
 
 LOGGER = logging.getLogger("LOGGER")
 LOGGER.setLevel(logging.DEBUG)
-
-# настройка обработчика и форматировщика для logger2
-handler = logging.FileHandler(f'{PATH_LOGS_DIR}/{FILE_LOG_NAME}.log', mode='a+')
-formatter = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
-
-# добавление форматировщика к обработчику
-handler.setFormatter(formatter)
-# добавление обработчика к логгеру
-LOGGER.addHandler(handler)
-
 LOGGER_PROGRESS = logging.getLogger("PROGRESS")
 LOGGER_PROGRESS.setLevel(logging.DEBUG)
 
-# настройка обработчика и форматировщика для logger2
-handler2 = logging.FileHandler(f'{PATH_LOGS_DIR}/progress.log', mode='a+')
-formatter2 = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
+def initLoggerDefault(file_log):
+    global LOGGER
 
-# добавление форматировщика к обработчику
-handler2.setFormatter(formatter2)
-# добавление обработчика к логгеру
-LOGGER_PROGRESS.addHandler(handler2)
+    FILEHandler.createFileLog(file_log)
+
+    # настройка обработчика и форматировщика для logger2
+    handler = logging.FileHandler(f'{PATH_LOGS_DIR}/{file_log}.log', mode='a+')
+    formatter = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
+
+    # добавление форматировщика к обработчику
+    handler.setFormatter(formatter)
+    # добавление обработчика к логгеру
+    LOGGER.addHandler(handler)
+
+def initLoggerProgress(file_progress):
+    global LOGGER_PROGRESS
+
+    FILEHandler.createFileLog(file_progress)
+
+    # настройка обработчика и форматировщика для logger2
+    handler2 = logging.FileHandler(f'{PATH_LOGS_DIR}/{file_progress}.log', mode='a+')
+    formatter2 = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
+
+    # добавление форматировщика к обработчику
+    handler2.setFormatter(formatter2)
+    # добавление обработчика к логгеру
+    LOGGER_PROGRESS.addHandler(handler2)
+
+
+initLoggerDefault(FILE_LOG)
+initLoggerProgress(FILE_PROGRESS)
+
 
 def splitLogs():
-    FILEHandler.appendToFileLog("------------", FILE_LOG_NAME)
+    global FILE_LOG
+    FILE_LOG = generateFileLogName()
+    initLoggerDefault(FILE_LOG)
 
 def getLogs():
-    return FILEHandler.getLogText(FILE_LOG_NAME)
+    global FILE_LOG
+    return FILEHandler.getFileLogText(FILE_LOG)
 
 def logError(text):
     LOGGER.error(text)
@@ -55,12 +88,15 @@ def logInfo(func_name, runtime, result=None):
     else:
         LOGGER.info(f"<< {func_name}(): {runtime:.10f}")
 
+
 def logProgress(text):
     LOGGER_PROGRESS.info(text)
 
-def getProgressLog():
-    return FILEHandler.getFileProgressText()
+def getProgress():
+    global FILE_PROGRESS
+    return FILEHandler.getFileLogText(FILE_PROGRESS)
 
 def cleanProgress():
-    FILEHandler.cleanFileProgress()
-
+    global FILE_PROGRESS, DEFAULT_FILE_LOG
+    FILEHandler.cleanFileLog(FILE_PROGRESS)
+    FILEHandler.cleanFileLog(DEFAULT_FILE_LOG)

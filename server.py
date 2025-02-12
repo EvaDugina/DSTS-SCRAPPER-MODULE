@@ -11,19 +11,15 @@ import init
 from HANDLERS import FILEHandler, LOGHandler
 from UTILS import parse
 
-# HOST = "localhost"
-# PORT = 8083
-
 _proccess = None
 
 app = FastAPI()
 
 
-@Decorators.log_decorator
+# @Decorators.log_decorator
 async def search(search_requests):
     global _proccess
 
-    LOGHandler.splitLogs()
     FILEHandler.cleanLINKSAndJSONSDir()
 
     if _proccess is not None:
@@ -37,23 +33,32 @@ async def search(search_requests):
 
     return f"Search({search_requests}) starting! "
 
-@Decorators.log_decorator
-def getSearchOutput():
-    output = parse.parseOutputFile(FILEHandler.getOutputText())
-    flag_end = JSONScrapper.FLAG_END
-    return {"flag_end": flag_end, "output": output}
+#
+#
+#
 
-@Decorators.log_decorator
-def getSearchProgress():
-    output = LOGHandler.getProgressLog()
-    flag_end = JSONScrapper.FLAG_END
-    return {"flag_end": flag_end, "progress": output}
+# @Decorators.log_decorator
+def getSearchFlagEnd():
+    return {"flag_end": JSONScrapper.FLAG_END}
 
-@Decorators.log_decorator
+# @Decorators.log_decorator
+def getSearchLogProgressResult():
+    return getSearchLog() | getSearchProgress() | getSearchResult()
+
+# @Decorators.log_decorator
 def getSearchLog():
     return {"logs": LOGHandler.getLogs()}
 
-@Decorators.log_decorator
+# @Decorators.log_decorator
+def getSearchProgress():
+    return {"progress": LOGHandler.getProgress()}
+
+# @Decorators.log_decorator
+def getSearchResult():
+    output = parse.parseOutputFile(FILEHandler.getOutputText())
+    return {"result": output}
+
+# @Decorators.log_decorator
 def stop():
     global _proccess
 
@@ -69,12 +74,13 @@ def stop():
 
     return f"Stopped! Current proccess: {_proccess}"
 
-@Decorators.log_decorator
+# @Decorators.log_decorator
 async def request_handler(request):
     if not "flag" in request:
         return "Некорректный запрос!"
 
     if request["flag"] == "SearchRequests":
+        LOGHandler.splitLogs()
         await search(request["requests"])
         # asyncio.run(search(request["requests"]))
         return "Поиск начат!"
@@ -83,11 +89,24 @@ async def request_handler(request):
         stop()
         return "Поиск остановлен!"
 
-    elif request["flag"] == "GetSearchProgress":
-        return getSearchProgress()
+    #
+    #
+    #
+
+    elif request["flag"] == "GetSearchFlagEnd":
+        return getSearchFlagEnd()
 
     elif request["flag"] == "GetSearchLog":
         return getSearchLog()
+
+    elif request["flag"] == "GetSearchProgress":
+        return getSearchProgress()
+
+    elif request["flag"] == "GetSearchResult":
+        return getSearchResult()
+
+    elif request["flag"] == "GetSearchLogProgressResult":
+        return getSearchLogProgressResult()
 
     return "Неизвестный тип операции!"
 
@@ -116,9 +135,14 @@ async def main(websocket: WebSocket):
             answer = {'error', E}
             pass
 
-        LOGHandler.logText(answer)
-
         await websocket.send_json(answer)
+
+
+async def debug():
+    try:
+        await request_handler({"flag": "SearchRequests", "requests": ["DONALDSON", "P550777"]})
+    except Exception as E:
+        pass
 
 
 # КОМАНДА ЗАПУСКА
@@ -127,3 +151,6 @@ async def main(websocket: WebSocket):
 if __name__ == "__main__":
     init.init()
     asyncio.run(main())
+    # asyncio.run(debug())
+
+

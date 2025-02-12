@@ -80,31 +80,30 @@ def getOutputText():
 #
 #
 
-# def appendToFileProgress(text):
-#     with open(f'{PATH_LOGS_DIR}/progress.log', 'a+') as f:
-#         f.write(text + "\n")
+def createFileLog(file_log):
+    with open(f'{PATH_LOGS_DIR}/{file_log}.log', 'a+') as f:
+        pass
 
-def cleanFileProgress():
-    open(f'{PATH_LOGS_DIR}/progress.log', 'w').close()
-
-def getFileProgressText():
-    lines = []
-    with open(f'{PATH_LOGS_DIR}/progress.log') as file:
-        for line in file:
-            lines.append(line.strip())
-    return lines
-
-#
-#
-#
-
-def appendToFileLog(text, file_log_name):
-    with open(f'{PATH_LOGS_DIR}/{file_log_name}.log', 'a+') as f:
+def appendToFileLog(file_log, text):
+    with open(f'{PATH_LOGS_DIR}/{file_log}.log', 'a+') as f:
         f.write(text + "\n")
 
-def getLogText(file_log_name):
+def getLastLogFileName():
+    log_files = []
+    for file_name in listdir(PATH_LOGS_DIR):
+        if "log_" in file_name:
+            log_files.append(file_name)
+    if len(log_files) < 1:
+        return None
+    else:
+        return log_files[len(log_files)-1]
+
+def cleanFileLog(file_log):
+    open(f'{PATH_LOGS_DIR}/{file_log}.log', 'w').close()
+
+def getFileLogText(file_log):
     lines = []
-    with open(f'{PATH_LOGS_DIR}/{file_log_name}.log') as file:
+    with open(f'{PATH_LOGS_DIR}/{file_log}.log') as file:
         for line in file:
             lines.append(line.strip())
     return lines

@@ -18,9 +18,10 @@ from HANDLERS import FILEHandler as fHandler
 
 import Decorators
 
-_THREADS_LIMIT = 4
-_process_list = []
+_THREADS_LIMIT = int(multiprocessing.cpu_count() / 2)
+LOGHandler.logText(f"THREADS_LIMIT: {_THREADS_LIMIT}")
 _error = None
+_pool = None
 
 
 class WebWorker:
@@ -46,7 +47,7 @@ class WebWorker:
 
     @Decorators.log_decorator
     def getProvider(self) -> Provider:
-        LOGHandler.logInfo(f"САЙТ-ПРОИЗВОДИТЕЛЬ: {self._provider_name.upper()}")
+        LOGHandler.logText(f"САЙТ-ПРОИЗВОДИТЕЛЬ: {self._provider_name.upper()}")
         return getProvider(self._provider_code)
 
     @Decorators.time_decorator
@@ -54,6 +55,7 @@ class WebWorker:
     @Decorators.log_decorator
     def pullCrossRefToDB(self):
 
+        checkInternetConnection()
         checkInternetConnection(self._provider.getMainUrl())
 
         # ПОЛУЧАЕМ КОЛИЧЕСТВО СТРАНИЦ
@@ -82,8 +84,6 @@ class WebWorker:
         if _error is not None:
             return _error
 
-        return Error.SUCCESS
-
 
 #
 # UTILITIES
@@ -92,14 +92,20 @@ class WebWorker:
 def getProvider(_provider_code) -> Provider:
     return ProviderHandler().getProviderByProviderCode(_provider_code)()
 
-def cleanup(text=""):
-    global _process_list
-    proccess_count = len(_process_list)
-    for process in _process_list:
-        process.kill()
-    _process_list = []
-    text = f"{text}{':' if len(text) >= 0 else ''} "
-    print(f'{text}{proccess_count} proccess cleaned up!')
+# @Decorators.log_decorator
+def cleanup(text):
+    global _pool
+
+    if _pool is not None:
+        LOGHandler.logText(f"{text}: {_pool._processes} cleaned processes")
+        for i in range(_pool._processes):
+            _pool._pool[i].kill()
+        _pool.close()
+        _pool.terminate()
+        _pool.join()
+        _pool = None
+
+
 
 @Decorators.time_decorator
 @Decorators.error_decorator
@@ -109,7 +115,6 @@ def checkInternetConnection(url='http://www.google.com/'):
     try:
         from urllib import request
         request.urlopen(url)
-        return Error.SUCCESS
     except:
         return Error.INTERNET_CONNECTION
 
@@ -131,8 +136,17 @@ def getBrowser():
             'profile.managed_default_content_settings.stylesheets': 2
         },
     )
-    options.add_argument('--headless')
+
+    # Add various options to make the browser more stable
+    # options.add_argument('--disable-gpu')  # Disable GPU hardware acceleration
+    # options.add_argument('--enable-unsafe-swiftshader')  # Disable WebRTC
+    # options.add_argument('--disable-dev-shm-usage')  # Overcome limited resource problems
+    # options.add_argument('--disable-web-security')  # Disable web security
+    # options.add_argument('--allow-running-insecure-content')  # Allow running insecure content
+    # options.add_argument('--disable-webrtc')  # Disable WebRTC
+
     options.add_argument('--no-sandbox')
+    options.add_argument('--headless')
 
     # https://stackoverflow.com/questions/29858752/error-message-chromedriver-executable-needs-to-be-available-in-the-path/52878725#52878725
     service = Service(ChromeDriverManager().install())
@@ -150,7 +164,6 @@ def getCountThreads(count_elements):
 @Decorators.time_decorator
 @Decorators.log_decorator
 def getArticleLINKSByThreads(_provider_code, _search_request, max_page):
-    global _process_list
 
     _provider = getProvider(_provider_code)
 
@@ -178,15 +191,13 @@ def getArticleLINKSByThreads(_provider_code, _search_request, max_page):
             for i in range((max_page // count_threads) * count_threads, max_page):
                 pages[i % _THREADS_LIMIT].append(i)
 
-        # Запускаем потоки
-        _process_list = []
+        pool = multiprocessing.Pool(processes=count_threads)
         for i in range(0, count_threads):
-            process = multiprocessing.Process(target=getLINKSbyPage,
-                                              args=(_provider_code, _search_request, _provider.getName(), pages[i],))
-            process.start()
-            _process_list.append(process)
-        for process in _process_list:
-            process.join()
+            pool.apply_async(getLINKSbyPage, args=(_provider_code, _search_request, _provider.getName(), pages[i],))
+        pool.close()
+        pool.join()
+
+        LOGHandler.logText(f"Pool is joined")
 
         cleanup("getArticleLINKSByThreads()")
 
@@ -243,13 +254,10 @@ def getLINKSbyPage(_provider_code, _search_request, _catalogue_name, pages):
     driver.close()
     driver.quit()
 
-    return Error.SUCCESS
-
 
 @Decorators.time_decorator
 @Decorators.log_decorator
 def generateJSONSbyThreads(_provider_code, _search_request):
-    global _process_list
 
     _provider = getProvider(_provider_code)
 
@@ -270,17 +278,17 @@ def generateJSONSbyThreads(_provider_code, _search_request):
             end_index = (i + 1) * count_lines_in_part + offset
             parts.append([start_index, end_index])
 
-    # Запускаем потоки
-    _process_list = []
-    for index in range(0, count_threads):
-        process = multiprocessing.Process(target=parseLINKS,
-                                          args=(parts[index][0], parts[index][1], _provider_code, _search_request))
-        process.start()
-        _process_list.append(process)
-    for process in _process_list:
-        process.join()
+    pool = multiprocessing.Pool(processes=count_threads)
+    for i in range(0, count_threads):
+        pool.apply_async(parseLINKS, args=(parts[i][0], parts[i][1], _provider_code, _search_request))
+    pool.close()
+    pool.join()
+
+    LOGHandler.logText(f"Pool is joined")
 
     cleanup("generateJSONSbyThreads()")
+
+    return
 
 
 
@@ -322,7 +330,7 @@ def parseLINKS(start_line, end_line, _provider_code, search_request):
                                          analog_producer_name)
 
         fHandler.appendJSONToFile(provider.getName(), article_json, search_request)
-        LOGHandler.logInfo(f'{article[0]} -- взят JSON!')
+        LOGHandler.logText(f'{article[0]} -- взят JSON!')
 
     driver.close()
     driver.quit()
@@ -335,7 +343,7 @@ def parseLINKS(start_line, end_line, _provider_code, search_request):
 def saveArticles(articles, _search_request, _catalogue_name):
 
     for article in articles:
-        LOGHandler.logInfo(f"{article[0]} - найден!")
+        LOGHandler.logText(f"{article[0]} - найден!")
 
         if len(article) == 4:
             fHandler.appendLINKtoFile(_catalogue_name,
