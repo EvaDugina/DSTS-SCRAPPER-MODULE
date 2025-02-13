@@ -47,12 +47,31 @@ def cleanLINKSAndJSONSDir():
         except Exception as e:
             LOGHandler.logText('Failed to delete %s. Reason: %s' % (file_path, e))
 
+def removeLINKFiles():
+    for dir_name in listdir(PATH_LINKS_DIR):
+        for file_name in listdir(f"{PATH_LINKS_DIR}/{dir_name}"):
+            try:
+                if os.access(f'{PATH_LOGS_DIR}/{file_name}', os.R_OK and os.X_OK):
+                    os.remove(f'{PATH_LOGS_DIR}/{file_name}')
+            except PermissionError:
+                LOGHandler.logText(f"ERROR! removeLINKFiles(): {file_name} while deleting links-file!")
+                pass
 
 def removeLINKFile(catalogue_name, search_request):
     # number = getCountCompleatedLINKSFiles(catalogue_name) + 1
     # os.rename(f'{PATH_LINKS_DIR}/{catalogue_name}/{search_request}.txt', f'{PATH_LINKS_DIR}/{catalogue_name}/{number}_{search_request}.txt')
     # shutil.move(f'{PATH_LINKS_DIR}/{catalogue_name}/{number}_{search_request}.txt', f'{PATH_LINKS_DIR}/{catalogue_name}/_completed')
     os.remove(f'{PATH_LINKS_DIR}/{catalogue_name}/{search_request}.txt')
+
+def removeJSONFiles():
+    for dir_name in listdir(PATH_JSONS_DIR):
+        for file_name in listdir(f"{PATH_JSONS_DIR}/{dir_name}"):
+            try:
+                if os.access(f'{PATH_LOGS_DIR}/{file_name}', os.R_OK and os.X_OK):
+                    os.remove(f'{PATH_LOGS_DIR}/{file_name}')
+            except PermissionError:
+                LOGHandler.logText(f"ERROR! removeJSONFiles(): {file_name} while deleting json-file!")
+                pass
 
 def removeJSONFile(catalogue_name, search_request):
     # number = getCountCompleatedJSONSFiles(catalogue_name) + 1
@@ -109,6 +128,37 @@ def getFileLogText(file_log):
         for line in file:
             lines.append(line.strip())
     return lines
+
+def removeFileLogsAcrossLast15():
+    max_count = 45
+    count_log_files = 0
+    for file_name in listdir(PATH_LOGS_DIR):
+        if "log_" in file_name:
+            count_log_files += 1
+    if count_log_files < max_count:
+        return
+    count_log_files -= 15
+    for file_name in listdir(PATH_LOGS_DIR):
+        if count_log_files <= 0:
+            return
+        try:
+            if os.access(f'{PATH_LOGS_DIR}/{file_name}', os.R_OK and os.X_OK):
+                os.remove(f'{PATH_LOGS_DIR}/{file_name}')
+                count_log_files -= 1
+        except PermissionError:
+            LOGHandler.logText(f"ERROR! removeFileLogsAcrossLast15(): {file_name} while deleting log-file!")
+            pass
+
+def removeFileLogAcrossCurrent(current_file_log_name):
+    for file_name in listdir(PATH_LOGS_DIR):
+        if "log_" in file_name and not (current_file_log_name in file_name):
+            try:
+                if os.access(f'{PATH_LOGS_DIR}/{file_name}', os.R_OK and os.X_OK):
+                    os.remove(f'{PATH_LOGS_DIR}/{file_name}')
+            except PermissionError:
+                LOGHandler.logText(f"ERROR! removeFileLogAcrossCurrent(): {file_name} while deleting log-file!")
+                pass
+
 
 #
 #

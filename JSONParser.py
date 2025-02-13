@@ -194,7 +194,7 @@ def parseElements(elements):
 @Decorators.log_decorator
 def parseElement(catalogue_name, search_request):
     parseJSONSbyThreads(catalogue_name, search_request)
-    fHandler.removeJSONFile(catalogue_name, search_request)
+    # fHandler.removeJSONFile(catalogue_name, search_request)
 
 
 if __name__ == "__main__":

@@ -57,7 +57,7 @@ def getSearchResult():
     output = parse.parseOutputFile(FILEHandler.getOutputText())
     return {"result": output}
 
-# @Decorators.log_decorator
+@Decorators.log_decorator
 def stop():
     global _proccess
 
@@ -68,7 +68,12 @@ def stop():
         if not _proccess.is_alive():
             _proccess.kill()
 
-    return f"Stopped! Current proccess: {_proccess}"
+    return
+
+@Decorators.log_decorator
+def cleanLogs():
+    LOGHandler.cleanLogs()
+    return
 
 # @Decorators.log_decorator
 async def request_handler(request):
@@ -84,6 +89,10 @@ async def request_handler(request):
     elif request["flag"] == "StopSearch":
         stop()
         return "Поиск остановлен!"
+
+    elif request["flag"] == "CleanLogs":
+        cleanLogs()
+        return "Логи очищены!"
 
     #
     #

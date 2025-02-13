@@ -139,6 +139,7 @@ def getBrowser():
     options.add_argument('ignore-certificate-errors')
 
     # https://stackoverflow.com/questions/29858752/error-message-chromedriver-executable-needs-to-be-available-in-the-path/52878725#52878725
+    # https://stackoverflow.com/questions/78796828/i-got-this-error-oserror-winerror-193-1-is-not-a-valid-win32-application
     chrome_install = ChromeDriverManager().install()
     folder = os.path.dirname(chrome_install)
     chromedriver_path = os.path.join(folder, "chromedriver.exe")

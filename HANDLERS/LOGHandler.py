@@ -28,8 +28,12 @@ LOGGER.setLevel(logging.DEBUG)
 LOGGER_PROGRESS = logging.getLogger("PROGRESS")
 LOGGER_PROGRESS.setLevel(logging.DEBUG)
 
-def initLoggerDefault(file_log):
+def initLogger(file_log):
     global LOGGER
+
+    LOGGER.handlers.clear()
+    while LOGGER.hasHandlers():
+        LOGGER.removeHandler(LOGGER.handlers[0])
 
     FILEHandler.createFileLog(file_log)
 
@@ -57,14 +61,17 @@ def initLoggerProgress(file_progress):
     LOGGER_PROGRESS.addHandler(handler2)
 
 
-initLoggerDefault(FILE_LOG)
+initLogger(FILE_LOG)
 initLoggerProgress(FILE_PROGRESS)
 
 
 def splitLogs():
     global FILE_LOG
     FILE_LOG = generateFileLogName()
-    initLoggerDefault(FILE_LOG)
+    initLogger(FILE_LOG)
+    FILEHandler.removeFileLogsAcrossLast15()
+    FILEHandler.removeLINKFiles()
+    FILEHandler.removeJSONFiles()
 
 def getLogs():
     global FILE_LOG
@@ -88,6 +95,8 @@ def logInfo(func_name, runtime, result=None):
     else:
         LOGGER.info(f"<< {func_name}(): {runtime:.10f}")
 
+def cleanLogs():
+    FILEHandler.removeFileLogAcrossCurrent(FILE_LOG)
 
 def logProgress(text):
     LOGGER_PROGRESS.info(text)
