@@ -1,12 +1,9 @@
 #!/usr/bin/env python
-
-from gevent import monkey
-
+from multiprocessing.pool import ThreadPool
 import json
-import threading
-
 import Decorators
 import init
+
 from HANDLERS import WEBHandler as wHandler
 from HANDLERS import FILEHandler as fHandler
 from HANDLERS import DBHandler as dbHandler
@@ -47,13 +44,19 @@ def parseJSONSbyThreads(catalogue_name, search_request):
             parts.append([start_index, end_index])
 
     # Запускаем потоки
-    tasks = []
+    pool = ThreadPool(processes=count_threads)
     for i in range(0, count_threads):
-        tasks.append(threading.Thread(target=parseJSONS, args=(parts[i][0], parts[i][1])))
-    for i in range(0, count_threads):
-        tasks[i].start()
-    for i in range(0, count_threads):
-        tasks[i].join()
+        pool.apply_async(parseJSONS, args=(parts[i][0], parts[i][1]))
+    pool.close()
+    pool.join()
+
+    # tasks = []
+    # for i in range(0, count_threads):
+    #     tasks.append(threading.Thread(target=parseJSONS, args=(parts[i][0], parts[i][1])))
+    # for i in range(0, count_threads):
+    #     tasks[i].start()
+    # for i in range(0, count_threads):
+    #     tasks[i].join()
 
     if _flag_has_error:
         return Error.DB_ERROR
@@ -165,6 +168,7 @@ def main():
         parseElement(catalogue_name, search_request)
 
 
+@Decorators.time_decorator
 @Decorators.error_decorator
 @Decorators.log_decorator
 def parseElements(elements):
@@ -181,8 +185,10 @@ def parseElements(elements):
         search_request = elem[1]
 
         parseElement(catalogue_name, search_request)
+        # print("parseElement()")
 
-    return
+    # print("parseElement() -> return")
+    return 0
 
 @Decorators.time_decorator
 @Decorators.log_decorator

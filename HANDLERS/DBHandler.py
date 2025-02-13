@@ -16,7 +16,6 @@ class DBWorker:
         self.CONNECTION = psycopg2.connect(dbname=config.DB_NAME, user=config.DB_USER, port=config.DB_PORT,
                                            password=config.DB_PASSWORD, host=config.DB_HOST)
 
-    @Decorators.log_decorator
     def getArticleById(self, article_id) -> list:
 
         query = querySelectArticle(article_id)
@@ -30,7 +29,6 @@ class DBWorker:
 
         return cursor.fetchone()
 
-    @Decorators.log_decorator
     def getArticleByName(self, article_name, producer_id) -> list:
 
         query = querySelectArticleByNameAndProducerId(article_name, producer_id)
@@ -44,7 +42,6 @@ class DBWorker:
 
         return cursor.fetchone()
 
-    @Decorators.log_decorator
     def getArticleAnalogs(self, article_id) -> list[int]:
 
         group_id = self.getGroupArticleAnalogs(article_id)
@@ -63,7 +60,6 @@ class DBWorker:
 
         return analogs
 
-    @Decorators.log_decorator
     def getGroupArticleAnalogs(self, article_id) -> int:
 
         query = querySelectGroupArticleAnalogs(article_id)
@@ -77,7 +73,6 @@ class DBWorker:
 
         return cursor.fetchone()[0]
 
-    @Decorators.log_decorator
     def getProducerById(self, producer_id) -> list:
 
         query = querySelectProducerById(producer_id)
@@ -91,7 +86,6 @@ class DBWorker:
 
         return cursor.fetchone()
 
-    @Decorators.log_decorator
     def getProducerIdByNameAndCatalogueName(self, producer_name, catalogue_name) -> int:
 
         producer_name = parse.splitProducerNameBySpaces(producer_name)
@@ -107,7 +101,6 @@ class DBWorker:
 
         return producer_id
 
-    @Decorators.log_decorator
     def getProducerByName(self, producer_name) -> list:
 
         query = querySelectProducerByName(producer_name)
@@ -121,7 +114,6 @@ class DBWorker:
 
         return cursor.fetchone()
 
-    @Decorators.log_decorator
     def getProducerByNameAndCatalogueName(self, producer_name, catalogue_name) -> list:
 
         query = querySelectProducerNameVariation(producer_name, catalogue_name)
@@ -135,7 +127,6 @@ class DBWorker:
 
         return cursor.fetchone()
 
-    @Decorators.log_decorator
     def getProducerNameVariations(self, producer_id) -> list:
 
         query = querySelectProducerNameVariations(producer_id)
@@ -149,7 +140,6 @@ class DBWorker:
 
         return cursor.fetchall()
 
-    @Decorators.log_decorator
     def getArticleInfo(self, article_id, catalogue_name) -> list:
 
         query = querySelectArticleInfo(article_id, catalogue_name)
@@ -163,7 +153,6 @@ class DBWorker:
 
         return cursor.fetchone()
 
-    @Decorators.log_decorator
     def getMaxGroupId(self) -> int:
 
         query = querySelectMaxGroupNumber()
@@ -182,7 +171,6 @@ class DBWorker:
     # INSERTS TO DB
     #####################################################################
 
-    @Decorators.log_decorator
     def insertArticle(self, article_line, producer_id, catalogue_name, type=None) -> int:
 
         article_line.upper().strip()
@@ -214,7 +202,6 @@ class DBWorker:
 
         return article_id
 
-    @Decorators.log_decorator
     def insertProducer(self, producer_line, catalogue_name) -> int:
 
         producer_line = producer_line.upper()
@@ -261,7 +248,6 @@ class DBWorker:
 
         return producer_id
 
-    @Decorators.log_decorator
     def insertArticleAnalogs(self, article_id, analog_article_ids, catalogue_name):
 
         group_id = self.getGroupArticleAnalogs(article_id)
@@ -289,7 +275,6 @@ class DBWorker:
         cursor.execute(query)
         self.CONNECTION.commit()
 
-    @Decorators.log_decorator
     def insertFirstArticleAnalog(self, article_id, analog_article_id, catalogue_name) -> int:
 
         group_id = self.getGroupArticleAnalogs(article_id)
@@ -312,7 +297,6 @@ class DBWorker:
 
         return group_id
 
-    @Decorators.log_decorator
     def insertProducerNameVariation(self, producer_id, name_variation, catalogue_name):
 
         name_variation = name_variation.upper()
@@ -326,7 +310,6 @@ class DBWorker:
 
             LOGHandler.logProgress(f"INSERTED PRODUCER_NAME_VARIATION: {producer_id} - {name_variation} - {catalogue_name}")
 
-    @Decorators.log_decorator
     def insertArticleNameVariation(self, article_id, name_variation, catalogue_name):
 
         name_variation = name_variation.upper()
@@ -340,7 +323,6 @@ class DBWorker:
 
             LOGHandler.logProgress(f"INSERTED ARTICLE_NAME_VARIATION: {article_id} - {name_variation} - {catalogue_name}")
 
-    @Decorators.log_decorator
     def insertArticleInfo(self, article_id, catalogue_name, url, type, output_json):
 
         if not self.getArticleInfo(article_id, catalogue_name):
@@ -356,14 +338,12 @@ class DBWorker:
 
         LOGHandler.logProgress(f"INSERTED ARTICLE INFO: {article_id} - {catalogue_name}")
 
-    @Decorators.log_decorator
     def insertCharacteristics(self, charachterictics_json):
 
         # print(charachterictics_json)
         for charachterictic in charachterictics_json:
             self.insertUniqueCharacteristic(charachterictic)
 
-    @Decorators.log_decorator
     def insertUniqueCharacteristic(self, charachterictic_name):
 
         query = queryInsertCharacteristic(charachterictic_name)
@@ -376,7 +356,6 @@ class DBWorker:
     # CHECK-FUNCTIONS
     #####################################################################
 
-    @Decorators.log_decorator
     def isArticleExist(self, article_name, producer_id) -> bool:
 
         query = querySelectArticleByNameAndProducerId(article_name, producer_id)
@@ -387,7 +366,6 @@ class DBWorker:
 
         return bool(cursor.rowcount)
 
-    @Decorators.log_decorator
     def isProducerExist(self, producer_name) -> bool:
 
         query = querySelectProducerByName(producer_name)
@@ -398,7 +376,7 @@ class DBWorker:
 
         return bool(cursor.rowcount)
 
-    @Decorators.log_decorator
+
     def isAnalogInComparisonTable(self, article_id, analog_article_id, catalogue_name) -> bool:
 
         group_id = self.getGroupArticleAnalogs(article_id)
@@ -410,7 +388,6 @@ class DBWorker:
 
         return bool(cursor.rowcount)
 
-    @Decorators.log_decorator
     def hasArticleNameVariation(self, article_id, name_variation, catalogue_name) -> bool:
 
         query = queryCheckArticleNameVariation(article_id, name_variation, catalogue_name)
@@ -421,7 +398,6 @@ class DBWorker:
 
         return bool(cursor.rowcount)
 
-    @Decorators.log_decorator
     def hasProducerNameVariation(self, producer_id, name_variation, catalogue_name) -> bool:
 
         query = queryCheckProducerNameVariation(producer_id, name_variation, catalogue_name)
@@ -432,7 +408,7 @@ class DBWorker:
 
         return bool(cursor.rowcount)
 
-    @Decorators.log_decorator
+
     def deleteAllAnalogsAcrossMe(self, article_id, group_id, catalogue_name):
 
         query = queryDeleteAllAnalogsAcrossMe(article_id, group_id, catalogue_name)

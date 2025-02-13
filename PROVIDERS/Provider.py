@@ -1,9 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# https://stackoverflow.com/questions/63564559/greenlet-error-cannot-switch-to-a-different-thread
-# from gevent import monkey
-
 import Decorators
 
 # monkey.patch_all()

@@ -4,7 +4,7 @@
 import Decorators
 import JSONParser
 from HANDLERS import WEBHandler as wHandler
-from HANDLERS import FILEHandler as fHandler, LOGHandler
+from HANDLERS import FILEHandler as fHandler, LOGHandler, STATEHandler
 import init
 from HANDLERS.ERRORHandler import Error
 
@@ -14,9 +14,6 @@ from HANDLERS.ERRORHandler import Error
 # https://www.zenrows.com/blog/web-scraping-without-getting-blocked#why-is-web-scraping-not-allowed
 from PROVIDERS import Provider
 from PROVIDERS.Provider import ProviderHandler
-
-
-FLAG_END = True
 
 @Decorators.error_decorator
 def main():
@@ -37,11 +34,10 @@ def main():
 @Decorators.time_decorator
 @Decorators.log_decorator
 def searchRequests(search_requests):
-    global FLAG_END
 
     init.init()
 
-    FLAG_END = False
+    STATEHandler.setFlagEnd(False)
     fHandler.cleanFileOutput()
     LOGHandler.cleanProgress()
 
@@ -55,10 +51,13 @@ def searchRequests(search_requests):
 
     elements = fHandler.getElementsForParse()
     JSONParser.parseElements(elements)
+    # print("parseElement() -> returned")
 
-    FLAG_END = True
+    STATEHandler.setFlagEnd(True)
+    # print(f"flag_end: {STATEHandler.getFlagEnd()}")
 
-    exit(0)
+    # print("searchRequests() -> return")
+    return 0
 
 
 @Decorators.time_decorator

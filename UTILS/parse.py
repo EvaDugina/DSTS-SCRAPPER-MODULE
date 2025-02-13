@@ -78,9 +78,9 @@ def parseOutputFile(output_file_lines):
             line_elems = line.replace("> ", "").split(" | ")
             analog = {
                 "type": "analog_article",
+                "catalogue_name": catalogue_name,
                 "article_id": line_elems[0],
                 "article_name": line_elems[1],
-                "catalogue_name": catalogue_name,
                 "producer_name": line_elems[2]
             }
             output.append(analog)

@@ -4,6 +4,8 @@ import shutil
 from os import listdir
 from pathlib import Path
 
+from HANDLERS import LOGHandler
+
 PATH_LOGS_DIR = "LOGS"
 PATH_JSONS_DIR = "JSONS"
 PATH_LINKS_DIR = "LINKS"
@@ -34,7 +36,7 @@ def cleanLINKSAndJSONSDir():
             elif os.path.isdir(file_path):
                 shutil.rmtree(file_path)
         except Exception as e:
-            print('Failed to delete %s. Reason: %s' % (file_path, e))
+            LOGHandler.logText('Failed to delete %s. Reason: %s' % (file_path, e))
     for filename in os.listdir(PATH_LINKS_DIR):
         file_path = os.path.join(PATH_LINKS_DIR, filename)
         try:
@@ -43,7 +45,7 @@ def cleanLINKSAndJSONSDir():
             elif os.path.isdir(file_path):
                 shutil.rmtree(file_path)
         except Exception as e:
-            print('Failed to delete %s. Reason: %s' % (file_path, e))
+            LOGHandler.logText('Failed to delete %s. Reason: %s' % (file_path, e))
 
 
 def removeLINKFile(catalogue_name, search_request):

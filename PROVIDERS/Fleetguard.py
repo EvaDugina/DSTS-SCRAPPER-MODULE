@@ -1,4 +1,6 @@
+# https://stackoverflow.com/questions/63564559/greenlet-error-cannot-switch-to-a-different-thread
 import gevent
+
 from selenium.common import WebDriverException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait

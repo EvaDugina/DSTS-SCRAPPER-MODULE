@@ -1,9 +1,8 @@
+import gevent
 from gevent import monkey
 monkey.patch_all()
 
 import json
-
-import gevent
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError, Error
 from selenium.common import WebDriverException
 from selenium.webdriver.common.by import By
@@ -224,7 +223,8 @@ class FilFilter(Provider.Provider):
                 else:
                     new_json['articleNames'].append(elem['RefNo'])
             except KeyError:
-                print("ELEM:", elem)
+                # print("ELEM:", elem)
+                pass
             id += 1
         if new_json != {}:
             cross_ref_json.append(new_json)

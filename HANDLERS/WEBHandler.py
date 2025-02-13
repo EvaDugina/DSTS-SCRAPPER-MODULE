@@ -1,5 +1,6 @@
 import atexit
 import multiprocessing
+import os
 
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -9,11 +10,6 @@ from HANDLERS.ERRORHandler import Error
 from HANDLERS import LOGHandler
 from PROVIDERS.Provider import ProviderHandler, Provider
 
-try:
-    from BeautifulSoup import BeautifulSoup
-except ImportError:
-    from bs4 import BeautifulSoup
-
 from HANDLERS import FILEHandler as fHandler
 
 import Decorators
@@ -21,7 +17,7 @@ import Decorators
 _THREADS_LIMIT = int(multiprocessing.cpu_count() / 2)
 LOGHandler.logText(f"THREADS_LIMIT: {_THREADS_LIMIT}")
 _error = None
-_pool = None
+# _pool = None
 
 
 class WebWorker:
@@ -41,8 +37,8 @@ class WebWorker:
         fHandler.createLINKSDir(self._provider_name)
         fHandler.createJSONSDir(self._provider_name)
 
-    def __del__(self):
-        cleanup("__del__()")
+    # def __del__(self):
+    #     cleanup("__del__()")
 
 
     @Decorators.log_decorator
@@ -93,17 +89,13 @@ def getProvider(_provider_code) -> Provider:
     return ProviderHandler().getProviderByProviderCode(_provider_code)()
 
 # @Decorators.log_decorator
-def cleanup(text):
-    global _pool
-
-    if _pool is not None:
-        LOGHandler.logText(f"{text}: {_pool._processes} cleaned processes")
-        for i in range(_pool._processes):
-            _pool._pool[i].kill()
-        _pool.close()
-        _pool.terminate()
-        _pool.join()
-        _pool = None
+def cleanup(text, pool):
+    if pool is not None:
+        LOGHandler.logText(f"{text}: {pool._processes} cleaned processes")
+        for i in range(pool._processes):
+            pool._pool[i].kill()
+        pool.terminate()
+        pool.join()
 
 
 
@@ -121,12 +113,6 @@ def checkInternetConnection(url='http://www.google.com/'):
 
 @Decorators.log_decorator
 def getBrowser():
-    # service = ChromeDriverService.CreateDefaultService()
-    # service.EnableVerboseLogging = true;
-    #
-    # webDriver = new
-    # ChromeDriver(service, options);
-
     options = webdriver.ChromeOptions()
     options.add_experimental_option(
         "prefs", {
@@ -145,11 +131,18 @@ def getBrowser():
     # options.add_argument('--allow-running-insecure-content')  # Allow running insecure content
     # options.add_argument('--disable-webrtc')  # Disable WebRTC
 
+    options.add_argument('--ignore-certificate-errors')
+    options.add_argument('--ignore-ssl-errors')
     options.add_argument('--no-sandbox')
     options.add_argument('--headless')
+    options.add_argument("--incognito")
+    options.add_argument('ignore-certificate-errors')
 
     # https://stackoverflow.com/questions/29858752/error-message-chromedriver-executable-needs-to-be-available-in-the-path/52878725#52878725
-    service = Service(ChromeDriverManager().install())
+    chrome_install = ChromeDriverManager().install()
+    folder = os.path.dirname(chrome_install)
+    chromedriver_path = os.path.join(folder, "chromedriver.exe")
+    service = Service(chromedriver_path)
     driver = webdriver.Chrome(options=options, service=service)
     return driver
 
@@ -197,9 +190,7 @@ def getArticleLINKSByThreads(_provider_code, _search_request, max_page):
         pool.close()
         pool.join()
 
-        LOGHandler.logText(f"Pool is joined")
-
-        cleanup("getArticleLINKSByThreads()")
+        cleanup("getArticleLINKSByThreads()", pool)
 
     return
 
@@ -284,9 +275,7 @@ def generateJSONSbyThreads(_provider_code, _search_request):
     pool.close()
     pool.join()
 
-    LOGHandler.logText(f"Pool is joined")
-
-    cleanup("generateJSONSbyThreads()")
+    cleanup("generateJSONSbyThreads()", pool)
 
     return
 
