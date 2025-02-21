@@ -5,7 +5,6 @@ from HANDLERS import FILEHandler as fHandl
 def generateArticleJSON(article_name, catalogue_name, producer_name, article_info_json, type="real"):
     article_json = json.dumps({'name': article_name, 'catalogue_name': catalogue_name, 'producer_name': producer_name,
                                'type': type, 'info': article_info_json})
-    # print(article_json)
     return article_json
 
 def generateItemCrossRefJSON(producer_name, article_ids, type):

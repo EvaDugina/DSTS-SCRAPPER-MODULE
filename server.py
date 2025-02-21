@@ -66,6 +66,7 @@ def stop():
         _proccess.terminate()
         time.sleep(0.1)
         if not _proccess.is_alive():
+            _proccess.join()
             _proccess.kill()
 
     return
@@ -135,13 +136,19 @@ async def main(websocket: WebSocket):
         # преобразуем json к словарю для удобной обработки
         request = dict(message)
 
+        # answer = await request_handler(request)
+        # await websocket.send_json(answer)
+
         try:
             answer = await request_handler(request)
         except Exception as E:
-            answer = {'error', E}
-            pass
+            answer = {'error': "request_handler(): " + str(E)}
 
-        await websocket.send_json(answer)
+        try:
+            await websocket.send_json(answer)
+        except Exception as E:
+            answer = {'error': "websocket.send_json(): " + str(E)}
+            await websocket.send_json(answer)
 
 
 async def debug():

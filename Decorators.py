@@ -1,3 +1,4 @@
+import json
 import time
 from functools import wraps
 
@@ -20,6 +21,9 @@ def log_decorator(function):
     @wraps(function)
     def log_decorator(*args, **kwargs):
         args_repr = [repr(a) for a in args]
+        for i in range(0, len(args_repr)):
+            if type(args[i]) is dict or type(args[i]) is list:
+                args_repr[i] = "\n" + json.dumps(args[i], indent=4) + "\n"
         kwargs_repr = [f"{k}={v!r}" for k, v in kwargs.items()]
         signature = ", ".join(args_repr + kwargs_repr)
         LOGHandler.logDebug(function.__name__, signature)

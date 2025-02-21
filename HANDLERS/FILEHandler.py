@@ -126,7 +126,7 @@ def getFileLogText(file_log):
     lines = []
     with open(f'{PATH_LOGS_DIR}/{file_log}.log') as file:
         for line in file:
-            lines.append(line.strip())
+            lines.append(line)
     return lines
 
 def removeFileLogsAcrossLast15():

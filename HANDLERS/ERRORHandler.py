@@ -3,8 +3,8 @@
 
 from enum import Enum
 
+# НЕ МОЖЕТ БЫТЬ ДЕКОРАТОРОВ, ТК ДЕКОРАТОРЫ ИСПОЛЬЗУЮТ ЕГО!!
 from HANDLERS import LOGHandler
-from UTILS import strings
 
 
 class Error(Enum):
