@@ -13,7 +13,8 @@ from HANDLERS import FILEHandler as fHandler
 
 import Decorators
 
-_THREADS_LIMIT = int(multiprocessing.cpu_count() / 2)
+# _THREADS_LIMIT = int(multiprocessing.cpu_count() / 2)
+_THREADS_LIMIT = 2
 
 LOGHandler.logText(f"THREADS_LIMIT: {_THREADS_LIMIT}")
 _error = None
@@ -78,6 +79,7 @@ class WebWorker:
         if _error is not None:
             return _error
 
+        return 0
 
 #
 # UTILITIES
@@ -86,7 +88,7 @@ class WebWorker:
 def getProvider(_provider_code) -> Provider:
     return ProviderHandler().getProviderByProviderCode(_provider_code)()
 
-# @Decorators.log_decorator
+@Decorators.log_decorator
 def cleanup(text, pool):
     if pool is not None:
         LOGHandler.logText(f"{text}: {pool._processes} cleaned processes")
@@ -105,6 +107,7 @@ def checkInternetConnection(url='http://www.google.com/'):
     try:
         from urllib import request
         request.urlopen(url)
+        return 0
     except:
         return Error.INTERNET_CONNECTION
 
@@ -122,19 +125,19 @@ def getBrowser():
     )
 
     # Add various options to make the browser more stable
-    # options.add_argument('--disable-gpu')  # Disable GPU hardware acceleration
-    # options.add_argument('--enable-unsafe-swiftshader')  # Disable WebRTC
-    # options.add_argument('--disable-dev-shm-usage')  # Overcome limited resource problems
-    # options.add_argument('--disable-web-security')  # Disable web security
-    # options.add_argument('--allow-running-insecure-content')  # Allow running insecure content
-    # options.add_argument('--disable-webrtc')  # Disable WebRTC
+    options.add_argument('--disable-gpu')  # Disable GPU hardware acceleration
+    options.add_argument('--enable-unsafe-swiftshader')  # Disable WebRTC
+    options.add_argument('--disable-dev-shm-usage')  # Overcome limited resource problems
+    options.add_argument('--disable-web-security')  # Disable web security
+    options.add_argument('--allow-running-insecure-content')  # Allow running insecure content
+    options.add_argument('--disable-webrtc')  # Disable WebRTC
 
     options.add_argument('--ignore-certificate-errors')
+    options.add_argument('--ignore-certificate-errors-spki-list')
     options.add_argument('--ignore-ssl-errors')
     options.add_argument('--no-sandbox')
     options.add_argument('--headless')
     options.add_argument("--incognito")
-    options.add_argument('ignore-certificate-errors')
 
     # https://stackoverflow.com/questions/29858752/error-message-chromedriver-executable-needs-to-be-available-in-the-path/52878725#52878725
     # https://stackoverflow.com/questions/78796828/i-got-this-error-oserror-winerror-193-1-is-not-a-valid-win32-application
@@ -244,6 +247,8 @@ def getLINKSbyPage(_provider_code, _search_request, _catalogue_name, pages):
     driver.close()
     driver.quit()
 
+    return 0
+
 
 @Decorators.time_decorator
 @Decorators.log_decorator
@@ -276,6 +281,8 @@ def generateJSONSbyThreads(_provider_code, _search_request):
 
     cleanup("generateJSONSbyThreads()", pool)
 
+    print("<< generateJSONSbyThreads()")
+
     return
 
 
@@ -296,6 +303,8 @@ def parseLINKS(start_line, end_line, _provider_code, search_request):
 
     # Проходимся по линиям в файле
     for article in articles:
+
+        LOGHandler.logText(f">>>> parseLINKS({start_line}, {end_line}): {article}")
 
         # Загружаем страницу артикула по ссылке
         driver = provider.loadArticlePage(driver, article[1])
@@ -320,8 +329,12 @@ def parseLINKS(start_line, end_line, _provider_code, search_request):
         fHandler.appendJSONToFile(provider.getName(), article_json, search_request)
         LOGHandler.logText(f'{article[0]} -- взят JSON!')
 
+    LOGHandler.logText(f"<<<< parseLINKS({start_line}, {end_line})")
+
     driver.close()
     driver.quit()
+
+    LOGHandler.logText(f"<< parseLINKS({start_line}, {end_line})")
 
     return 0
 

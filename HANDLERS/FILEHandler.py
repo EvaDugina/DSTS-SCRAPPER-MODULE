@@ -15,10 +15,8 @@ PATH_REQUEST_FILE = config.PATH_REQUEST_FILE
 
 
 def init():
-    print(">> FILEHAndler.init()")
     Path(f'{PATH_JSONS_DIR}/').mkdir(parents=True, exist_ok=True)
     Path(f'{PATH_LINKS_DIR}/').mkdir(parents=True, exist_ok=True)
-    print("<< FILEHAndler.init()")
 
 
 def createLINKSDir(catalogue_name):
@@ -129,6 +127,7 @@ def appendJSONToFile(catalogue_name, text, search_request):
         f.write(text + "\n")
 
 
+@Decorators.log_decorator
 def appendLINKtoFile(catalogue_name, text, search_request):
     with open(f'{PATH_LINKS_DIR}/{catalogue_name}/{search_request}.txt', 'a+') as f:
         f.write(text + "\n")

@@ -71,8 +71,6 @@ def searchRequest(provider_name, search_request):
     webWorker = wHandler.WebWorker(provider_code, search_request)
     webWorker.pullCrossRefToDB()
 
-    # fHandler.removeLINKFile(provider_name, search_request)
-
     return
 
 
