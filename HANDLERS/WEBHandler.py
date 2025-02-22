@@ -1,4 +1,3 @@
-import atexit
 import multiprocessing
 import os
 
@@ -6,7 +5,7 @@ from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 
-from HANDLERS.ERRORHandler import Error
+from HANDLERS.FailureHandler import Error
 from HANDLERS import LOGHandler
 from PROVIDERS.Provider import ProviderHandler, Provider
 
@@ -15,10 +14,9 @@ from HANDLERS import FILEHandler as fHandler
 import Decorators
 
 _THREADS_LIMIT = int(multiprocessing.cpu_count() / 2)
+
 LOGHandler.logText(f"THREADS_LIMIT: {_THREADS_LIMIT}")
 _error = None
-# _pool = None
-
 
 class WebWorker:
     _provider_name = ""
@@ -47,7 +45,7 @@ class WebWorker:
         return getProvider(self._provider_code)
 
     @Decorators.time_decorator
-    @Decorators.error_decorator
+    @Decorators.failures_decorator
     @Decorators.log_decorator
     def pullCrossRefToDB(self):
 
@@ -100,7 +98,7 @@ def cleanup(text, pool):
 
 
 @Decorators.time_decorator
-@Decorators.error_decorator
+@Decorators.failures_decorator
 @Decorators.log_decorator
 def checkInternetConnection(url='http://www.google.com/'):
     # ПРОВЕРКА ИНТЕРНЕТ СОЕДИНЕНИЯ
@@ -197,7 +195,7 @@ def getArticleLINKSByThreads(_provider_code, _search_request, max_page):
 
 
 @Decorators.time_decorator
-@Decorators.error_decorator
+@Decorators.failures_decorator
 @Decorators.log_decorator
 def getLINKSbyPage(_provider_code, _search_request, _catalogue_name, pages):
     _provider = getProvider(_provider_code)
@@ -283,7 +281,7 @@ def generateJSONSbyThreads(_provider_code, _search_request):
 
 
 @Decorators.time_decorator
-@Decorators.error_decorator
+@Decorators.failures_decorator
 @Decorators.log_decorator
 def parseLINKS(start_line, end_line, _provider_code, search_request):
     provider = getProvider(_provider_code)

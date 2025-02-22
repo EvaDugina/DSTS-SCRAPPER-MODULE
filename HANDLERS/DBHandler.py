@@ -2,7 +2,6 @@ import json
 import psycopg2
 
 from HANDLERS import LOGHandler
-import Decorators
 import config
 
 from UTILS import parse

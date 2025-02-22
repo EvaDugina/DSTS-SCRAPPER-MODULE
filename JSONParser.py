@@ -7,7 +7,7 @@ import init
 from HANDLERS import WEBHandler as wHandler
 from HANDLERS import FILEHandler as fHandler
 from HANDLERS import DBHandler as dbHandler
-from HANDLERS.ERRORHandler import Error
+from HANDLERS.FailureHandler import Error
 from PROVIDERS.Provider import ProviderHandler
 
 _search_request = ""
@@ -18,7 +18,7 @@ _flag_has_error = False
 
 
 @Decorators.time_decorator
-@Decorators.error_decorator
+@Decorators.failures_decorator
 @Decorators.log_decorator
 def parseJSONSbyThreads(catalogue_name, search_request):
     global _catalogue_name, _search_request
@@ -79,7 +79,7 @@ def parseJSONS(start_line, end_line):
     return 0
 
 
-@Decorators.error_decorator
+@Decorators.failures_decorator
 @Decorators.log_decorator
 def parseJSON(main_article_name, main_producer_name, type, json_info, catalogue_name):
     global _dbHandler, _flag_has_error
@@ -105,7 +105,7 @@ def parseJSON(main_article_name, main_producer_name, type, json_info, catalogue_
     parseInfo(_dbHandler, catalogue_name, json_info, main_article_id, main_article_name)
 
 
-@Decorators.error_decorator
+@Decorators.failures_decorator
 @Decorators.log_decorator
 def parseCrossReference(_dbHandler, catalogue_name, cross_ref, main_article_id):
     global _flag_has_error
@@ -148,7 +148,7 @@ def convertTypeToDigits(type):
     else:
         return 0
 
-@Decorators.error_decorator
+@Decorators.failures_decorator
 @Decorators.log_decorator
 def main():
     global _dbHandler
@@ -169,7 +169,7 @@ def main():
 
 
 @Decorators.time_decorator
-@Decorators.error_decorator
+@Decorators.failures_decorator
 @Decorators.log_decorator
 def parseElements(elements):
     global _dbHandler

@@ -6,7 +6,7 @@ import JSONParser
 from HANDLERS import WEBHandler as wHandler
 from HANDLERS import FILEHandler as fHandler, LOGHandler, STATEHandler
 import init
-from HANDLERS.ERRORHandler import Error
+from HANDLERS.FailureHandler import Error
 
 # https://techorde.com/scraping-browser-xhr-requests-using-python/
 # https://scrapism.lav.io/scraping-xhr/
@@ -15,7 +15,8 @@ from HANDLERS.ERRORHandler import Error
 from PROVIDERS import Provider
 from PROVIDERS.Provider import ProviderHandler
 
-@Decorators.error_decorator
+
+@Decorators.failures_decorator
 def main():
     init.init()
 
@@ -31,10 +32,10 @@ def main():
 
     exit(0)
 
+
 @Decorators.time_decorator
 @Decorators.log_decorator
 def searchRequests(search_requests):
-
     init.init()
 
     STATEHandler.setFlagEnd(False)
@@ -73,6 +74,17 @@ def searchRequest(provider_name, search_request):
     # fHandler.removeLINKFile(provider_name, search_request)
 
     return
+
+
+def splitRequests():
+    LOGHandler.createNewLogger()
+    LOGHandler.removeLogsAcrossLast15()
+    fHandler.removeLINKFiles()
+    fHandler.removeJSONFiles()
+
+
+def cleanLINKSAndJSONS():
+    fHandler.cleanLINKSAndJSONSDir()
 
 
 if __name__ == "__main__":

@@ -3,18 +3,22 @@ import time
 from functools import wraps
 
 from HANDLERS import LOGHandler
-from HANDLERS.ERRORHandler import ErrorHandler, Error
 
 
-def error_decorator(function):
+def failures_decorator(function):
     @wraps(function)
-    def error_decorator(*args, **kwargs):
+    def failures_decorator(*args, **kwargs):
+        from HANDLERS.FailureHandler import FailureHandler, Error, Warning
+        failureHandler = FailureHandler()
         result = function(*args, **kwargs)
         if type(result) is Error:
-            ErrorHandler().handleError(result, function.__name__)
+            failureHandler.handleError(result, function.__name__)
+        if type(result) is dict and 'output' in result and type(result['output']) is Warning \
+                and 'warnings' in result:
+            failureHandler.handleWarning(result['output'], result['warnings'], function.__name__)
         return result
 
-    return error_decorator
+    return failures_decorator
 
 
 def log_decorator(function):
@@ -26,7 +30,9 @@ def log_decorator(function):
                 args_repr[i] = "\n" + json.dumps(args[i], indent=4) + "\n"
         kwargs_repr = [f"{k}={v!r}" for k, v in kwargs.items()]
         signature = ", ".join(args_repr + kwargs_repr)
+
         LOGHandler.logDebug(function.__name__, signature)
+
         result = function(*args, **kwargs)
         return result
 
@@ -39,7 +45,9 @@ def time_decorator(function):
         start = time.perf_counter()
         result = function(*args, **kwargs)
         runtime = time.perf_counter() - start
+
         LOGHandler.logInfo(function.__name__, runtime, result)
+
         return result
 
     return time_decorator

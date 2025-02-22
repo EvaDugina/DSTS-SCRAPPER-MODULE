@@ -2,12 +2,11 @@ import multiprocessing
 import asyncio
 import json
 import time
-
 from fastapi import FastAPI, WebSocket
 
+import init
 import Decorators
 import JSONScrapper
-import init
 from HANDLERS import FILEHandler, LOGHandler, STATEHandler
 from UTILS import parse
 
@@ -15,12 +14,11 @@ _proccess = None
 
 app = FastAPI()
 
-
 # @Decorators.log_decorator
 async def search(search_requests):
     global _proccess
 
-    FILEHandler.cleanLINKSAndJSONSDir()
+    JSONScrapper.cleanLINKSAndJSONS()
 
     if _proccess is not None:
         stop()
@@ -82,7 +80,7 @@ async def request_handler(request):
         return "Некорректный запрос!"
 
     if request["flag"] == "SearchRequests":
-        LOGHandler.splitLogs()
+        JSONScrapper.splitRequests()
         await search(request["requests"])
         # asyncio.run(search(request["requests"]))
         return "Поиск начат!"
@@ -122,7 +120,7 @@ def send_format(json_data):
 
 @Decorators.log_decorator
 def onOpen():
-    # LOGHandler.logText("Connection open!")
+    init.init()
     pass
 
 @app.websocket('/')
@@ -136,19 +134,19 @@ async def main(websocket: WebSocket):
         # преобразуем json к словарю для удобной обработки
         request = dict(message)
 
-        # answer = await request_handler(request)
-        # await websocket.send_json(answer)
+        answer = await request_handler(request)
+        await websocket.send_json(answer)
 
-        try:
-            answer = await request_handler(request)
-        except Exception as E:
-            answer = {'error': "request_handler(): " + str(E)}
-
-        try:
-            await websocket.send_json(answer)
-        except Exception as E:
-            answer = {'error': "websocket.send_json(): " + str(E)}
-            await websocket.send_json(answer)
+        # try:
+        #     answer = await request_handler(request)
+        # except Exception as E:
+        #     answer = {'error': "request_handler(): " + str(E)}
+        #
+        # try:
+        #     await websocket.send_json(answer)
+        # except Exception as E:
+        #     answer = {'error': "websocket.send_json(): " + str(E)}
+        #     await websocket.send_json(answer)
 
 
 async def debug():
@@ -160,10 +158,5 @@ async def debug():
 
 # КОМАНДА ЗАПУСКА
 # uvicorn server:app --reload --port 5000 --host localhost
-
-if __name__ == "__main__":
-    init.init()
-    asyncio.run(main())
-    # asyncio.run(debug())
 
 

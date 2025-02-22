@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-from HANDLERS import FILEHandler as fHandler
+from HANDLERS import FILEHandler
+
 
 def init():
-    fHandler.createDirectories()
+    FILEHandler.init()

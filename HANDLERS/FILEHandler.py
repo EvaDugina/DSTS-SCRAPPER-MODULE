@@ -1,33 +1,40 @@
-import datetime
 import os
-import shutil
 from os import listdir
 from pathlib import Path
 
-from HANDLERS import LOGHandler
+import config
+from HANDLERS.FailureHandler import Warning
 
-PATH_LOGS_DIR = "LOGS"
-PATH_JSONS_DIR = "JSONS"
-PATH_LINKS_DIR = "LINKS"
+import Decorators
 
-PATH_REQUEST_FILE = "SEARCH_REQUESTS.txt"
+PATH_JSONS_DIR = config.PATH_JSONS_DIR
+PATH_LINKS_DIR = config.PATH_LINKS_DIR
+PATH_LOGS_DIR = config.PATH_LOGS_DIR
 
-def createDirectories():
-    Path(f'{PATH_LOGS_DIR}').mkdir(parents=True, exist_ok=True)
-    Path(f'{PATH_LINKS_DIR}/').mkdir(parents=True, exist_ok=True)
+PATH_REQUEST_FILE = config.PATH_REQUEST_FILE
+
+
+def init():
+    print(">> FILEHAndler.init()")
     Path(f'{PATH_JSONS_DIR}/').mkdir(parents=True, exist_ok=True)
+    Path(f'{PATH_LINKS_DIR}/').mkdir(parents=True, exist_ok=True)
+    print("<< FILEHAndler.init()")
+
 
 def createLINKSDir(catalogue_name):
     Path(f'{PATH_LINKS_DIR}/{catalogue_name}/').mkdir(parents=True, exist_ok=True)
     Path(f'{PATH_LINKS_DIR}/{catalogue_name}/_completed/').mkdir(parents=True, exist_ok=True)
 
+
 def createJSONSDir(catalogue_name):
     Path(f'{PATH_JSONS_DIR}/{catalogue_name}/').mkdir(parents=True, exist_ok=True)
     Path(f'{PATH_JSONS_DIR}/{catalogue_name}/_completed/').mkdir(parents=True, exist_ok=True)
 
-
+@Decorators.failures_decorator
 def cleanLINKSAndJSONSDir():
     import os, shutil
+
+    arrayErrors = []
     for filename in os.listdir(PATH_JSONS_DIR):
         file_path = os.path.join(PATH_JSONS_DIR, filename)
         try:
@@ -36,7 +43,7 @@ def cleanLINKSAndJSONSDir():
             elif os.path.isdir(file_path):
                 shutil.rmtree(file_path)
         except Exception as e:
-            LOGHandler.logText('Failed to delete %s. Reason: %s' % (file_path, e))
+            arrayErrors.append('Failed to delete %s. Reason: %s' % (file_path, e))
     for filename in os.listdir(PATH_LINKS_DIR):
         file_path = os.path.join(PATH_LINKS_DIR, filename)
         try:
@@ -45,17 +52,25 @@ def cleanLINKSAndJSONSDir():
             elif os.path.isdir(file_path):
                 shutil.rmtree(file_path)
         except Exception as e:
-            LOGHandler.logText('Failed to delete %s. Reason: %s' % (file_path, e))
+            arrayErrors.append('Failed to delete %s. Reason: %s' % (file_path, e))
 
+    return {"output": "" if len(arrayErrors) > 0 else Warning.CLEAN_LINKS_AND_JSONS, 'warnings': arrayErrors}
+
+
+@Decorators.failures_decorator
 def removeLINKFiles():
+    arrayErrors = []
     for dir_name in listdir(PATH_LINKS_DIR):
         for file_name in listdir(f"{PATH_LINKS_DIR}/{dir_name}"):
             try:
                 if os.access(f'{PATH_LOGS_DIR}/{file_name}', os.R_OK and os.X_OK):
                     os.remove(f'{PATH_LOGS_DIR}/{file_name}')
             except PermissionError:
-                LOGHandler.logText(f"ERROR! removeLINKFiles(): {file_name} while deleting links-file!")
+                arrayErrors.append(f"ERROR! removeLINKFiles(): {file_name} while deleting links-file!")
                 pass
+
+    return {"output": "" if len(arrayErrors) > 0 else Warning.CLEAN_LINKS_AND_JSONS, 'warnings': arrayErrors}
+
 
 def removeLINKFile(catalogue_name, search_request):
     # number = getCountCompleatedLINKSFiles(catalogue_name) + 1
@@ -63,21 +78,27 @@ def removeLINKFile(catalogue_name, search_request):
     # shutil.move(f'{PATH_LINKS_DIR}/{catalogue_name}/{number}_{search_request}.txt', f'{PATH_LINKS_DIR}/{catalogue_name}/_completed')
     os.remove(f'{PATH_LINKS_DIR}/{catalogue_name}/{search_request}.txt')
 
+
+@Decorators.failures_decorator
 def removeJSONFiles():
+    arrayErrors = []
     for dir_name in listdir(PATH_JSONS_DIR):
         for file_name in listdir(f"{PATH_JSONS_DIR}/{dir_name}"):
             try:
                 if os.access(f'{PATH_LOGS_DIR}/{file_name}', os.R_OK and os.X_OK):
                     os.remove(f'{PATH_LOGS_DIR}/{file_name}')
             except PermissionError:
-                LOGHandler.logText(f"ERROR! removeJSONFiles(): {file_name} while deleting json-file!")
+                arrayErrors.append(f"ERROR! removeJSONFiles(): {file_name} while deleting json-file!")
                 pass
+
+    return {"output": "" if len(arrayErrors) > 0 else Warning.CLEAN_LINKS_AND_JSONS, 'warnings': arrayErrors}
 
 def removeJSONFile(catalogue_name, search_request):
     # number = getCountCompleatedJSONSFiles(catalogue_name) + 1
     # os.rename(f'{PATH_JSONS_DIR}/{catalogue_name}/{search_request}.txt', f'{PATH_JSONS_DIR}/{catalogue_name}/{number}_{search_request}.txt')
     # shutil.move(f'{PATH_JSONS_DIR}/{catalogue_name}/{number}_{search_request}.txt', f'{PATH_JSONS_DIR}/{catalogue_name}/_completed')
     os.remove(f'{PATH_JSONS_DIR}/{catalogue_name}/{search_request}.txt')
+
 
 #
 #
@@ -87,8 +108,10 @@ def appendToFileOutput(text):
     with open(f'{PATH_LOGS_DIR}/output.txt', 'a+') as f:
         f.write(text + "\n")
 
+
 def cleanFileOutput():
     open(f'{PATH_LOGS_DIR}/output.txt', 'w').close()
+
 
 def getOutputText():
     lines = []
@@ -101,77 +124,14 @@ def getOutputText():
 #
 #
 
-def createFileLog(file_log):
-    with open(f'{PATH_LOGS_DIR}/{file_log}.log', 'a+') as f:
-        pass
-
-def appendToFileLog(file_log, text):
-    with open(f'{PATH_LOGS_DIR}/{file_log}.log', 'a+') as f:
-        f.write(text + "\n")
-
-def getLastLogFileName():
-    log_files = []
-    for file_name in listdir(PATH_LOGS_DIR):
-        if "log_" in file_name:
-            log_files.append(file_name)
-    if len(log_files) < 1:
-        return None
-    else:
-        return log_files[len(log_files)-1]
-
-def cleanFileLog(file_log):
-    open(f'{PATH_LOGS_DIR}/{file_log}.log', 'w').close()
-
-def getFileLogText(file_log):
-    lines = []
-    with open(f'{PATH_LOGS_DIR}/{file_log}.log') as file:
-        for line in file:
-            lines.append(line)
-    return lines
-
-def removeFileLogsAcrossLast15():
-    max_count = 45
-    count_log_files = 0
-    for file_name in listdir(PATH_LOGS_DIR):
-        if "log_" in file_name:
-            count_log_files += 1
-    if count_log_files < max_count:
-        return
-    count_log_files -= 15
-    for file_name in listdir(PATH_LOGS_DIR):
-        if count_log_files <= 0:
-            return
-        try:
-            if os.access(f'{PATH_LOGS_DIR}/{file_name}', os.R_OK and os.X_OK):
-                os.remove(f'{PATH_LOGS_DIR}/{file_name}')
-                count_log_files -= 1
-        except PermissionError:
-            LOGHandler.logText(f"ERROR! removeFileLogsAcrossLast15(): {file_name} while deleting log-file!")
-            pass
-
-def removeFileLogAcrossCurrent(current_file_log_name):
-    for file_name in listdir(PATH_LOGS_DIR):
-        if "log_" in file_name and not (current_file_log_name in file_name):
-            try:
-                if os.access(f'{PATH_LOGS_DIR}/{file_name}', os.R_OK and os.X_OK):
-                    os.remove(f'{PATH_LOGS_DIR}/{file_name}')
-            except PermissionError:
-                LOGHandler.logText(f"ERROR! removeFileLogAcrossCurrent(): {file_name} while deleting log-file!")
-                pass
-
-
-#
-#
-#
-
 def appendJSONToFile(catalogue_name, text, search_request):
     with open(f'{PATH_JSONS_DIR}/{catalogue_name}/{search_request}.txt', 'a+') as f:
         f.write(text + "\n")
 
+
 def appendLINKtoFile(catalogue_name, text, search_request):
     with open(f'{PATH_LINKS_DIR}/{catalogue_name}/{search_request}.txt', 'a+') as f:
         f.write(text + "\n")
-
 
 
 def getLINKSfromFile(catalogue_name, search_request):
@@ -183,6 +143,7 @@ def getLINKSfromFile(catalogue_name, search_request):
             index += 1
     return links
 
+
 def getLINKSfromFileByLines(catalogue_name, search_request, start_line, end_line):
     links = []
     index = 0
@@ -192,6 +153,7 @@ def getLINKSfromFileByLines(catalogue_name, search_request, start_line, end_line
                 links.append(line.rstrip().split(" "))
             index += 1
     return links
+
 
 def getJSONSfromFileByLines(catalogue_name, search_request, start_line, end_line):
     links = []
@@ -204,12 +166,12 @@ def getJSONSfromFileByLines(catalogue_name, search_request, start_line, end_line
     return links
 
 
-
 def getCountLINKSLines(catalogue_name, file_path):
     num_lines = 0
     for line in open(f'{PATH_LINKS_DIR}/{catalogue_name}/{file_path}'):
         num_lines += 1
     return num_lines
+
 
 def getCountJSONSLines(catalogue_name, file_path):
     num_lines = 0
@@ -217,18 +179,20 @@ def getCountJSONSLines(catalogue_name, file_path):
         num_lines += 1
     return num_lines
 
+
 def getCountCompleatedLINKSFiles(catalogue_name):
     path = f"{PATH_LINKS_DIR}/{catalogue_name}/_completed"
     return len(listdir(path))
+
 
 def getCountCompleatedJSONSFiles(catalogue_name):
     path = f"{PATH_JSONS_DIR}/{catalogue_name}/_completed"
     return len(listdir(path))
 
+
 def getCountCompleatedOUTPUTFiles():
     path = f"{PATH_LOGS_DIR}"
-    return len(listdir(path))-1
-
+    return len(listdir(path)) - 1
 
 
 def getSearchRequests():
@@ -238,6 +202,7 @@ def getSearchRequests():
             break
         search_requests.append(line.rstrip().split(" "))
     return search_requests
+
 
 def getElementsForParse():
     elements = []
@@ -251,6 +216,7 @@ def getElementsForParse():
                 elements.append([producer_name, search_request])
     return elements
 
+
 def deleteSimilarLinesFromJSON(catalogue_name, search_request):
     path = f'{PATH_JSONS_DIR}/{catalogue_name}/{search_request}'
     lines_seen = set()  # holds lines already seen
@@ -261,8 +227,3 @@ def deleteSimilarLinesFromJSON(catalogue_name, search_request):
     for line in lines_seen:
         outfile.write(line)
     outfile.close()
-
-
-
-
-
