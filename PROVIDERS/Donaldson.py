@@ -4,15 +4,12 @@ from json import JSONDecodeError
 from bs4 import BeautifulSoup
 from selenium.common import WebDriverException, JavascriptException
 from selenium.webdriver.common.by import By
-from playwright.sync_api import TimeoutError as PlaywrightTimeoutError, Error
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError, Error, sync_playwright
 
-
+import Decorators
 from PROVIDERS import Provider
-from HANDLERS import FILEHandler as fHandler, JSONHandler as parseJSON, JSONHandler, PLAYWRIGHTHandler
+from HANDLERS import FILEHandler as fHandler, JSONHandler as parseJSON, JSONHandler
 from UTILS import strings, parse
-
-
-PLAYWRIGHT = PLAYWRIGHTHandler.PLAYWRIGHT
 
 def wait_until(return_value, period=1):
     time.sleep(period)
@@ -27,9 +24,16 @@ class Donaldson(Provider.Provider):
     _article_url = "https://shop.donaldson.com/store/ru-ru/product/"
     _catalogue_name = "DONALDSON"
 
+    _playwright_handler = None
+
     def __init__(self):
         super().__init__()
-        self._playwright = PLAYWRIGHT
+
+    def __del__(self):
+        super().__del__()
+
+    def __exit__(self):
+        super().__exit__()
 
     def getMainUrl(self):
         return self._main_url
@@ -134,7 +138,7 @@ class Donaldson(Provider.Provider):
             driver.get(article_url)
         except WebDriverException:
             return False
-        return driver
+        return True
 
 
     def getArticleType(self, driver) -> str:
@@ -150,58 +154,37 @@ class Donaldson(Provider.Provider):
         pass
 
 
-    def saveJSON(self, driver, article_url, article_name, type, search_request, analog_article_name, analog_producer_name):
+    def saveJSON(self, driver, article_url, article_name, type, search_request, analog_article_name,
+                 analog_producer_name, playwright_browser=None):
 
         # Получаем Cross-Ref & Characteristics & Type
-        index = 0
-        limit_check = 4
+        data = {"cross_ref": {}, "info_json": {}}
 
-        data = {}
-        data["cross_ref"] = {}
-        data["info_json"] = {}
+        def handle_cross_ref(response_json):
+            if 'crossReferenceList' in response_json:
+                data['cross_ref'] = response_json['crossReferenceList']
+                print(data['cross_ref'])
 
-        def handle_response(response):
+        def handle_info(response_json):
+            article_info_characteristic = dict()
+            article_info_else = dict()
+            if 'productAttributesResponse' in response_json:
+                article_info_characteristic['productMainInfo'] = \
+                    response_json['productAttributesResponse']['dynamicAttributes']
+            if 'recentlyViewedProductResponse' in response_json:
+                article_info_else['productSecondaryInfo'] = \
+                    response_json['recentlyViewedProductResponse']['recentlyViewedProducts'][0]
+            data["info_json"] = article_info_characteristic | article_info_else
+            print(data['info_json'])
 
-            if len(data["cross_ref"]) < 1:
-                if "fetchproductcrossreflist?" in response.url:
-                    try:
-                        if 'crossReferenceList' in response.json():
-                            data['cross_ref'] = response.json()[
-                                'crossReferenceList']
-                    except Error:
-                        pass
-                    except JSONDecodeError:
-                        pass
-
-            if len(data["info_json"]) < 1:
-                if "fetchProductAttrAndRecentlyViewed?" in response.url:
-                    article_info_characteristic = dict()
-                    article_info_else = dict()
-                    try:
-                        if 'productAttributesResponse' in response.json():
-                            article_info_characteristic['productMainInfo'] = \
-                                response.json()['productAttributesResponse'][
-                                    'dynamicAttributes']
-                        if 'recentlyViewedProductResponse' in response.json():
-                            article_info_else['productSecondaryInfo'] = \
-                                response.json()['recentlyViewedProductResponse']['recentlyViewedProducts'][0]
-                        data["info_json"] = {**article_info_characteristic, **article_info_else}
-
-                    except Error:
-                        pass
-
-        browser = self._playwright.chromium.launch()
-        page = browser.new_page()
-        while (len(data["cross_ref"]) == 0 or len(data["info_json"]) == 0) and index < limit_check:
-            # page.set_default_timeout(5000)
-            try:
-                page.on("response", handle_response)
-                page.goto(article_url, wait_until="networkidle")
-            except PlaywrightTimeoutError:
-                pass
-            index += 1
-        page.context.close()
-        browser.close()
+        playwright_browser.newPage()
+        try:
+            playwright_browser.handleResponse(article_url, handle_cross_ref, "fetchproductcrossreflist?")
+            playwright_browser.handleResponse(article_url, handle_info, "fetchProductAttrAndRecentlyViewed?")
+        except PlaywrightTimeoutError:
+            pass
+        except Exception as e:
+            print(f"Exception {str(e)}")
 
         _article_cross_ref_json = {'crossReference': data['cross_ref']}
         _article_info_json = data['info_json']

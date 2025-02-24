@@ -2,6 +2,8 @@ import logging
 # https://habr.com/ru/companies/wunderfund/articles/683880/
 import datetime
 
+from filelock import FileLock
+
 import config
 
 
@@ -20,48 +22,8 @@ def init():
 #
 #
 
-def setLogger(file_log_name):
-    # https://stackoverflow.com/questions/7484454/removing-handlers-from-pythons-logging-loggers
-    LOGGER.handlers.clear()
-    while LOGGER.hasHandlers():
-        LOGGER.removeHandler(LOGGER.handlers[0])
-
-    # настройка обработчика и форматировщика для logger2
-    handler = logging.FileHandler(f'{config.PATH_LOGS_DIR}/{file_log_name}.log', mode='a+')
-    formatter = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
-
-    # добавление форматировщика к обработчику
-    handler.setFormatter(formatter)
-    # добавление обработчика к логгеру
-    LOGGER.addHandler(handler)
-
-
-def setLoggerProgress(file_progress_name):
-    # https://stackoverflow.com/questions/7484454/removing-handlers-from-pythons-logging-loggers
-    LOGGER_PROGRESS.handlers.clear()
-    while LOGGER_PROGRESS.hasHandlers():
-        LOGGER_PROGRESS.removeHandler(LOGGER_PROGRESS.handlers[0])
-
-    # настройка обработчика и форматировщика для logger2
-    handler2 = logging.FileHandler(f'{config.PATH_LOGS_DIR}/{file_progress_name}.log', mode='a+')
-    formatter2 = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
-
-    # добавление форматировщика к обработчику
-    handler2.setFormatter(formatter2)
-    # добавление обработчика к логгеру
-    LOGGER_PROGRESS.addHandler(handler2)
-
-
-def setHandlers():
-    setLogger(config.CURRENT_LOG_FILE)
-    setLoggerProgress(config.FILE_PROGRESS)
-
-
 def createNewLogger():
-    new_file_log = generateFileLogName()
-    createFileLog(new_file_log)
-    config.CURRENT_LOG_FILE = new_file_log
-    setLogger(new_file_log)
+    logSafe.createNewLogger()
 
 #
 #
@@ -137,12 +99,14 @@ def initLogFiles():
     open(f'{config.PATH_LOGS_DIR}/{config.FILE_OUTPUT}.txt', 'w').close()
 
 def createFileLog(file_log):
-    with open(f'{PATH_LOGS_DIR}/{file_log}.log', 'a+') as f:
-        pass
+    with FileLock(f'{PATH_LOGS_DIR}/{file_log}.log.lock'):
+        with open(f'{PATH_LOGS_DIR}/{file_log}.log', 'a+') as f:
+            pass
 
 def appendToFileLog(file_log, text):
-    with open(f'{PATH_LOGS_DIR}/{file_log}.log', 'a+') as f:
-        f.write(text + "\n")
+    with FileLock(f'{PATH_LOGS_DIR}/{file_log}.log.lock'):
+        with open(f'{PATH_LOGS_DIR}/{file_log}.log', 'a+') as f:
+            f.write(text + "\n")
 
 def getLastLogFileName():
     log_files = []
@@ -155,13 +119,15 @@ def getLastLogFileName():
         return log_files[len(log_files) - 1]
 
 def cleanFileLog(file_log):
-    open(f'{PATH_LOGS_DIR}/{file_log}.log', 'w').close()
+    with FileLock(f'{PATH_LOGS_DIR}/{file_log}.log.lock'):
+        open(f'{PATH_LOGS_DIR}/{file_log}.log', 'w').close()
 
 def getFileLogText(file_log):
     lines = []
-    with open(f'{PATH_LOGS_DIR}/{file_log}.log') as file:
-        for line in file:
-            lines.append(line)
+    with FileLock(f'{PATH_LOGS_DIR}/{file_log}.log.lock'):
+        with open(f'{PATH_LOGS_DIR}/{file_log}.log') as file:
+            for line in file:
+                lines.append(line)
     return lines
 
 
@@ -180,9 +146,10 @@ def removeFileLogsAcrossLast15():
         if count_log_files <= 0:
             return
         try:
-            if os.access(f'{PATH_LOGS_DIR}/{file_name}', os.R_OK and os.X_OK):
-                os.remove(f'{PATH_LOGS_DIR}/{file_name}')
-                count_log_files -= 1
+            with FileLock(f'{PATH_LOGS_DIR}/{file_name}.lock'):
+                if os.access(f'{PATH_LOGS_DIR}/{file_name}', os.R_OK and os.X_OK):
+                    os.remove(f'{PATH_LOGS_DIR}/{file_name}')
+                    count_log_files -= 1
         except PermissionError:
             arrayErrors.append(f"ERROR! removeFileLogsAcrossLast15(): {file_name} while deleting log-file!")
             pass
@@ -196,8 +163,9 @@ def removeFileLogAcrossCurrent(current_file_log_name):
     for file_name in listdir(PATH_LOGS_DIR):
         if "log_" in file_name and not (current_file_log_name in file_name):
             try:
-                if os.access(f'{PATH_LOGS_DIR}/{file_name}', os.R_OK and os.X_OK):
-                    os.remove(f'{PATH_LOGS_DIR}/{file_name}')
+                with FileLock(f'{PATH_LOGS_DIR}/{file_name}.lock'):
+                    if os.access(f'{PATH_LOGS_DIR}/{file_name}', os.R_OK and os.X_OK):
+                        os.remove(f'{PATH_LOGS_DIR}/{file_name}')
             except PermissionError:
                 arrayErrors.append(f"ERROR! removeFileLogAcrossCurrent(): {file_name} while deleting log-file!")
                 pass
@@ -207,6 +175,73 @@ def removeFileLogAcrossCurrent(current_file_log_name):
 #
 #
 
+
+class LogSafe:
+
+    def __init__(self):
+        # print("Logs init!")
+        self.setHandlers()
+
+    def __del__(self):
+        # print("Logs delete!")
+        self.removeAllHandlers()
+
+    def __exit__(self):
+        # print("Logs exit!")
+        self.removeAllHandlers()
+
+    def createNewLogger(self):
+        new_file_log = generateFileLogName()
+        createFileLog(new_file_log)
+        config.CURRENT_LOG_FILE = new_file_log
+        self.setLogger(new_file_log)
+
+    def removeAllHandlers(self):
+        self.removeHandlers(LOGGER)
+        self.removeHandlers(LOGGER_PROGRESS)
+
+    def setLogger(self, file_log_name):
+        # https://stackoverflow.com/questions/7484454/removing-handlers-from-pythons-logging-loggers
+        self.removeHandlers(LOGGER)
+
+        # настройка обработчика и форматировщика для logger2
+        handler = logging.FileHandler(f'{config.PATH_LOGS_DIR}/{file_log_name}.log', mode='a+')
+        formatter = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
+
+        # добавление форматировщика к обработчику
+        handler.setFormatter(formatter)
+        # добавление обработчика к логгеру
+        LOGGER.addHandler(handler)
+
+    def setLoggerProgress(self, file_progress_name):
+        # https://stackoverflow.com/questions/7484454/removing-handlers-from-pythons-logging-loggers
+        self.removeHandlers(LOGGER_PROGRESS)
+
+        # настройка обработчика и форматировщика для logger2
+        handler2 = logging.FileHandler(f'{config.PATH_LOGS_DIR}/{file_progress_name}.log', mode='a+')
+        formatter2 = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
+
+        # добавление форматировщика к обработчику
+        handler2.setFormatter(formatter2)
+        # добавление обработчика к логгеру
+        LOGGER_PROGRESS.addHandler(handler2)
+
+    def removeHandlers(self, logger):
+        if not logger:
+            return
+        logger.handlers.clear()
+        while logger.hasHandlers():
+            logger.removeHandler(logger.handlers[0])
+
+    def setHandlers(self):
+        self.setLogger(config.CURRENT_LOG_FILE)
+        self.setLoggerProgress(config.FILE_PROGRESS)
+
+#
+#
+#
+
+
 init()
 
 LOGGER = logging.getLogger("LOGGER")
@@ -214,4 +249,5 @@ LOGGER.setLevel(logging.DEBUG)
 LOGGER_PROGRESS = logging.getLogger("PROGRESS")
 LOGGER_PROGRESS.setLevel(logging.DEBUG)
 
-setHandlers()
+logSafe = LogSafe()
+

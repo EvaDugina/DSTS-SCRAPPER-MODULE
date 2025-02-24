@@ -44,6 +44,7 @@ class FailureHandler:
         LOGHandler.logError(f"{function_name}() | {error_text}")
 
         exit(error_code)
+        exit(0)
 
     def handleWarning(self, warning_code, warnings, function_name):
 

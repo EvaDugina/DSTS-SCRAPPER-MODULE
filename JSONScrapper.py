@@ -13,7 +13,6 @@ from HANDLERS.FailureHandler import Error
 # https://www.zenrows.com/blog/selenium-python-web-scraping#add-real-headers
 # https://www.zenrows.com/blog/web-scraping-without-getting-blocked#why-is-web-scraping-not-allowed
 from PROVIDERS import Provider
-from PROVIDERS.Provider import ProviderHandler
 
 
 @Decorators.failures_decorator
@@ -64,12 +63,17 @@ def searchRequests(search_requests):
 @Decorators.time_decorator
 @Decorators.log_decorator
 def searchRequest(provider_name, search_request):
-    provider_code = ProviderHandler().getProviderCodeByName(provider_name)
-    if provider_code is None or not ProviderHandler().isActive(provider_code):
+    provider_code = Provider.getProviderCodeByName(provider_name)
+    if provider_code is None or not Provider.isActive(provider_code):
         return
 
+    print("WebWorker() INIT START!")
     webWorker = wHandler.WebWorker(provider_code, search_request)
+    print("WebWorker() INIT SUCCESS!")
+
+    print("pullCrossRefToDB() START!")
     webWorker.pullCrossRefToDB()
+    print("pullCrossRefToDB() END!")
 
     return
 

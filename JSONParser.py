@@ -8,7 +8,7 @@ from HANDLERS import WEBHandler as wHandler
 from HANDLERS import FILEHandler as fHandler
 from HANDLERS import DBHandler as dbHandler
 from HANDLERS.FailureHandler import Error
-from PROVIDERS.Provider import ProviderHandler
+from PROVIDERS import Provider
 
 _search_request = ""
 _catalogue_name = ""
@@ -137,7 +137,7 @@ def parseCrossReference(_dbHandler, catalogue_name, cross_ref, main_article_id):
 def parseInfo(_dbHandler, catalogue_name, json_info, main_article_id, main_article_name):
 
     _dbHandler.insertCharacteristics(json_info['articleMainInfo'])
-    url = f"{ProviderHandler().getArticleBaseURLbyProviderName(catalogue_name, main_article_name)}/{json_info['articleSecondaryInfo']['articleId']}"
+    url = f"{Provider.getArticleBaseURLbyProviderName(catalogue_name, main_article_name)}/{json_info['articleSecondaryInfo']['articleId']}"
     _dbHandler.insertArticleInfo(main_article_id, catalogue_name, url, json_info['articleDescription'].upper(), json_info)
 
 
