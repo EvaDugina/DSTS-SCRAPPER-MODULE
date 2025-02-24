@@ -1,3 +1,4 @@
+import json
 import time
 from json import JSONDecodeError
 
@@ -138,17 +139,32 @@ class Donaldson(Provider.Provider):
             driver.get(article_url)
         except WebDriverException:
             return False
+        except Exception as e:
+            print(f"loadArticlePage() Exception: {str(e)}")
         return True
 
 
     def getArticleType(self, driver) -> str:
-        html = driver.page_source.encode('utf-8')
-        parsed_html = BeautifulSoup(html, "html.parser")
-        body = parsed_html.body
-        while body is None or body == "":
-            time.sleep(0.5)
-        found = body.find('div', attrs={'class': 'prodSubTitleMob'})
-        return found.text
+        article_type = ""
+        try:
+            html = driver.page_source.encode('utf-8')
+            parsed_html = None
+            try:
+                parsed_html = BeautifulSoup(html, "html.parser")
+                while parsed_html is None or parsed_html == "" or not parsed_html.body:
+                        time.sleep(1)
+                        parsed_html = BeautifulSoup(html, "html.parser")
+            except Exception as e:
+                print(f"BeautifulSoup() Exception: {str(e)}")
+            if parsed_html:
+                body = parsed_html.body
+                found = body.find('div', attrs={'class': 'prodSubTitleMob'})
+                article_type = found.text
+        except Exception as e:
+            print(f"getArticleType() Exception: {str(e)}")
+
+        return article_type
+
 
     def parseCrossReferenceResult(self, driver, pageNumber):
         pass
@@ -163,7 +179,6 @@ class Donaldson(Provider.Provider):
         def handle_cross_ref(response_json):
             if 'crossReferenceList' in response_json:
                 data['cross_ref'] = response_json['crossReferenceList']
-                print(data['cross_ref'])
 
         def handle_info(response_json):
             article_info_characteristic = dict()
@@ -175,7 +190,6 @@ class Donaldson(Provider.Provider):
                 article_info_else['productSecondaryInfo'] = \
                     response_json['recentlyViewedProductResponse']['recentlyViewedProducts'][0]
             data["info_json"] = article_info_characteristic | article_info_else
-            print(data['info_json'])
 
         playwright_browser.newPage()
         try:
@@ -186,6 +200,7 @@ class Donaldson(Provider.Provider):
         except Exception as e:
             print(f"Exception {str(e)}")
 
+        print(json.dumps(data))
         _article_cross_ref_json = {'crossReference': data['cross_ref']}
         _article_info_json = data['info_json']
 

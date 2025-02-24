@@ -58,41 +58,29 @@ class PlaywrightBrowser:
     def setPageTimeout(self, timeout_ms):
         self.__page.set_default_timeout(timeout_ms)
 
-    # def handleResponse(self, func_handle_response):
-    #     try:
-    #         self.__page.on("response", func_handle_response)
-    #     except Exception as e:
-    #         print(f"Exception {str(e)}")
-
-    # def removeResponseHandler(self):
-    #     self.__page.remove_listener('response', self.__func_handle_response)
-    #     self.__func_handle_response = None
-    #     self.closePage()
-
     def open(self, url):
         try:
             self.__page.goto(url, wait_until="domcontentloaded")
         except Exception as e:
             print(f"Exception {str(e)}")
 
-    def handleResponses(self, url, handler1, handler2, match1=None, match2=None):
-        responses_jsons = self.expectResponsesJsons(url, match1, match2)
-        handler1(responses_jsons[0])
-        handler2(responses_jsons[1])
-
     def handleResponse(self, url, func_handl, match):
-        response_json = self.expectResponseJson(url, match)
-        func_handl(response_json)
-
-    def expectResponsesJsons(self, url, match1, match2):
-        response_json1 = self.expectResponseJson(url, match1)
-        response_json2 = self.expectResponseJson(url, match2)
-        return [response_json1, response_json2]
+        try:
+            response_json = self.expectResponseJson(url, match)
+            if response_json != "":
+                print(f"response_json: {json.dumps(response_json)}")
+                func_handl(response_json)
+        except Exception as e:
+            print(f"Exception handleResponse(): {str(e)}")
 
     def expectResponseJson(self, url, match):
-        with self.__page.expect_response(lambda response: match is not None and match in response.url
-                                                          and response.status == 200) as response_info:
-            self.open(url)
-            response = response_info.value
-        return response.json()
+        try:
+            with self.__page.expect_response(lambda response: match is not None and match in response.url
+                                                              and response.status == 200) as response_info:
+                self.open(url)
+                response_json = response_info.value.json()
+        except Exception as e:
+            # print(f"Exception expectResponseJson(): {str(e)}")
+            return ""
+        return response_json
 

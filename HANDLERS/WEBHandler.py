@@ -1,5 +1,6 @@
 import multiprocessing
 import os
+import time
 
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -15,7 +16,7 @@ from HANDLERS import FILEHandler as fHandler
 import Decorators
 
 # _THREADS_LIMIT = int(multiprocessing.cpu_count() / 2)
-_THREADS_LIMIT = 2
+_THREADS_LIMIT = 4
 
 
 LOGHandler.logText(f"THREADS_LIMIT: {_THREADS_LIMIT}")
@@ -144,10 +145,6 @@ def getArticleLINKSByThreads(provider, _search_request, max_page):
             for i in range((max_page // count_threads) * count_threads, max_page):
                 pages[i % _THREADS_LIMIT].append(i)
 
-        # with PoolHandler(count_threads) as poolHandler:
-        #     for i in range(0, count_threads):
-        #         poolHandler.start(getLINKSbyPage, Provider.cloneProvider(provider), _search_request, pages[i])
-
         with multiprocessing.Pool(processes=count_threads) as pool:
             for i in range(0, count_threads):
                 pool.apply_async(getLINKSbyPage, args=(provider.getName(), _search_request, pages[i],))
@@ -269,26 +266,23 @@ def getLINKSbyPage(provider_name, _search_request, pages):
 @Decorators.log_decorator
 def parseLINKS(start_line, end_line, provider_name, search_request):
 
-    print(f"{start_line}-{end_line} getProviderByProviderName() START!")
+    print(f"{start_line}-{end_line} -> getProviderByProviderName()")
     provider = Provider.getProviderByProviderName(provider_name)
-    print(f"{start_line}-{end_line} getProviderByProviderName() END!")
 
     # ПОИСК БРАУЗЕРА ДЛЯ ИСПОЛЬЗОВАНИЯ
-    print(f"{start_line}-{end_line} Browser() START!")
+    print(f"{start_line}-{end_line} -* Browser()")
     with Browser() as browser:
-        print(f"{start_line}-{end_line} Browser() ENTER!!")
 
-        print(f"{start_line}-{end_line} getLINKSfromFileByLines() START!")
+        print(f"{start_line}-{end_line} --> getLINKSfromFileByLines()")
         articles = fHandler.getLINKSfromFileByLines(provider.getName(), search_request, start_line, end_line)
-        print(f"{start_line}-{end_line} getLINKSfromFileByLines() END!")
 
         # with PlaywrightBrowser(PLAYWRIGHTHandler.PLAYWRIGHT_HANDLER.getPlaywright()) as playwright_browser:
         playwright_browser = PlaywrightBrowser(PLAYWRIGHTHandler.PLAYWRIGHT_HANDLER.getPlaywright())
 
         # Проходимся по линиям в файле
-        print(f"{start_line}-{end_line} Articles: {articles}")
+        print(f"{start_line}-{end_line} --* Articles: {articles}")
         for article in articles:
-            print(f"{start_line}-{end_line} --> Article: {article} START!")
+            print(f"{start_line}-{end_line} ----* Article: {article} START!")
 
             LOGHandler.logText(f">>>> parseLINKS({start_line}, {end_line}): {article}")
 
@@ -296,10 +290,12 @@ def parseLINKS(start_line, end_line, provider_name, search_request):
             print(f"{start_line}-{end_line} ----> loadArticlePage()")
             provider.loadArticlePage(browser.getDriver(), article[1])
 
+            # Определяем тип элемента
             print(f"{start_line}-{end_line} ----> getArticleType()")
             type = provider.getArticleType(browser.getDriver())
 
             # Вытаскиваем аналоги
+            print(f"{start_line}-{end_line} ----> analogs ")
             analog_article_name = ""
             analog_producer_name = ""
             if len(article) == 4:
@@ -312,16 +308,15 @@ def parseLINKS(start_line, end_line, provider_name, search_request):
             print(f"{start_line}-{end_line} ----> saveJSON()")
             article_json = provider.saveJSON(browser.getDriver(), article[1], article[0], type, search_request,
                                              analog_article_name, analog_producer_name, playwright_browser)
-            print(f"Article JSON: {article_json}")
 
             fHandler.appendJSONToFile(provider.getName(), article_json, search_request)
             LOGHandler.logText(f'{article[0]} -- взят JSON!')
 
-            print(f"{start_line}-{end_line} --> Article: {article} END!")
+            print(f"{start_line}-{end_line} ----* Article: {article} END!")
 
-            print(f"{start_line}-{end_line} Articles END!")
+        print(f"{start_line}-{end_line} --* Articles END!")
 
-    print(f"{start_line}-{end_line} Browser() EXIT!")
+    print(f"{start_line}-{end_line} -* Browser() EXIT!")
 
     LOGHandler.logText(f"<<<< parseLINKS({start_line}, {end_line})")
 
@@ -353,25 +348,42 @@ class Browser:
 
     @Decorators.failures_decorator
     def __enter__(self):
-        MAX_COUNT = 3
+        MAX_COUNT = _THREADS_LIMIT + 1
         count = 0
-        while self._driver is None and count < MAX_COUNT:
-            self._driver = self.getBrowser()
+        while not self._driver and count < MAX_COUNT:
+            try:
+                self._driver = self.getChromeDriver()
+            except Exception as e:
+                pass
             count += 1
-        if self._driver is None:
+        if not self._driver:
+            print("Драйвер не был создан!")
             return Error.UNDEFIND_CHROME_DRIVER
         print(f"driver enter(): {self._driver}")
         return self
 
     @Decorators.failures_decorator
+    def __del__(self):
+        print(f"driver del(): {self._driver}")
+        try:
+            if self._driver:
+                self._driver.close()
+                self._driver.quit()
+        except Exception as e:
+            time.sleep(1)
+            self._driver.quit()
+        return 0
+
+    @Decorators.failures_decorator
     def __exit__(self, exception_type, exception_value, traceback):
         print(f"driver exit(): {self._driver}")
         try:
-            self._driver.close()
-            self._driver.quit()
+            if self._driver:
+                self._driver.close()
+                self._driver.quit()
         except Exception as e:
-            print("Не удалось закрыть driver:\n" + str(e))
-            return Error.UNDEFIND_CHROME_DRIVER
+            time.sleep(1)
+            self._driver.quit()
         return 0
 
     #
@@ -383,8 +395,8 @@ class Browser:
 
     @Decorators.time_decorator
     @Decorators.log_decorator
-    def getBrowser(self):
-        print(f"getBrowser()")
+    def getChromeDriver(self):
+        print(f"getChromeDriver()")
         options = webdriver.ChromeOptions()
         options.add_experimental_option(
             "prefs", {
@@ -420,42 +432,7 @@ class Browser:
         chromedriver_path = os.path.join(folder, "chromedriver.exe")
         service = Service(chromedriver_path)
         driver = webdriver.Chrome(options=options, service=service)
+        # driver.set_page_load_timeout(5)
         return driver
 
-
-class PoolHandler:
-    _pool = None
-    _count_threads = 0
-
-    def __init__(self, count_threads):
-        self._count_threads = count_threads
-
-    def __enter__(self):
-        self._pool = multiprocessing.Pool(processes=self._count_threads)
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        try:
-            self._pool.close()
-            self._pool.join()
-            if self._pool is not None:
-                LOGHandler.logText(f"{exc_val}: {self._pool._processes} cleaned processes")
-                for i in range(self._pool._processes):
-                    self._pool._pool[i].kill()
-                self._pool.terminate()
-                self._pool.join()
-        except Exception as e:
-            print("Не удалось закрыть Pool:\n" + str(e))
-            return Error.UNDEFIND_CHROME_DRIVER
-        return 0
-
-    def start(self, func, *args):
-        try:
-            # https://sky.pro/wiki/python/primery-ispolzovaniya-pool-apply-apply-async-map-v-python/
-            self._pool.apply_async(getLINKSbyPage, args=(*args,))
-        except Exception as e:
-            print("Не удалось запустить Pool:\n" + str(e))
-            return Error.UNDEFIND_CHROME_DRIVER
-
-        return 0
 
